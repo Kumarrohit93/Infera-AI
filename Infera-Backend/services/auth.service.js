@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt")
 const { pool } = require("../config/db")
 const AppError = require("../utils/AppError")
+const { signAccessToken } = require("../utils/token")
 
 async function registerOrganization({ organizationName, name, email, password }) {
   const passwordHash = await bcrypt.hash(password, 10)
@@ -38,4 +39,41 @@ async function registerOrganization({ organizationName, name, email, password })
   }
 }
 
-module.exports = { registerOrganization }
+async function login({ email, password }) {
+  const result = await pool.query(
+    `SELECT u.id, u.name, u.email, u.password_hash,
+            m.organization_id, m.role, m.status
+     FROM users u
+     JOIN organization_members m ON m.user_id = u.id
+     WHERE u.email = $1`,
+    [email.toLowerCase()]
+  )
+  const row = result.rows[0]
+
+  const passwordOk = row ? await bcrypt.compare(password, row.password_hash) : false
+  if (!passwordOk) {
+    throw new AppError(401, "UNAUTHENTICATED", "Invalid email or password")
+  }
+  if (row.status !== "active") {
+    throw new AppError(403, "FORBIDDEN", "Your account is not active in this organization")
+  }
+
+  const accessToken = signAccessToken({
+    userId: row.id,
+    organizationId: row.organization_id,
+    role: row.role,
+  })
+
+  return {
+    accessToken,
+    user: {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      organizationId: row.organization_id,
+    },
+  }
+}
+
+module.exports = { registerOrganization, login }
