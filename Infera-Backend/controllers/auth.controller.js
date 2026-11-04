@@ -26,4 +26,9 @@ async function login(req, res) {
   res.status(200).json({ success: true, data: result })
 }
 
-module.exports = { registerOrganization, login }
+async function me(req, res) {
+  const result = await authService.getMe(req.user.userId)
+  res.status(200).json({ success: true, data: result })
+}
+
+module.exports = { registerOrganization, login, me }

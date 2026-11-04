@@ -76,4 +76,31 @@ async function login({ email, password }) {
   }
 }
 
-module.exports = { registerOrganization, login }
+async function getMe(userId) {
+  const result = await pool.query(
+    `SELECT u.id, u.name, u.email,
+            o.id AS organization_id, o.name AS organization_name,
+            m.role, m.status
+     FROM users u
+     JOIN organization_members m ON m.user_id = u.id
+     JOIN organizations o ON o.id = m.organization_id
+     WHERE u.id = $1`,
+    [userId]
+  )
+  const row = result.rows[0]
+
+  if (!row) {
+    throw new AppError(401, "UNAUTHENTICATED", "User no longer exists")
+  }
+  if (row.status !== "active") {
+    throw new AppError(403, "FORBIDDEN", "Your account is not active in this organization")
+  }
+
+  return {
+    user: { id: row.id, name: row.name, email: row.email },
+    organization: { id: row.organization_id, name: row.organization_name },
+    role: row.role,
+  }
+}
+
+module.exports = { registerOrganization, login, getMe }
