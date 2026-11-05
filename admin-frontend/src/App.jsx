@@ -1,0 +1,12 @@
+import React from 'react';
+import LoginPage from './pages/LoginPage';
+import { Toaster } from 'react-hot-toast';
+
+export default function App() {
+  return (
+    <>
+      <Toaster position="top-right" />
+      <LoginPage />
+    </>
+  );
+}
