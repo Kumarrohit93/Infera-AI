@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
   Upload,
   Search,
@@ -8,22 +9,44 @@ import {
   Inbox,
   Filter,
   CheckCircle2,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import toast from 'react-hot-toast';
 
+// Framer motion variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }
+  }
+};
+
 export default function DocumentsPage() {
   const fileInputRef = useRef(null);
 
-  // Documents state (abhi empty hai, backend se aayega ya upload karne par add hoga)
+  // Documents state (Zero mock data - backend se aayega ya user upload karega)
   const [documents, setDocuments] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFolderFilter, setSelectedFolderFilter] = useState('All');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [targetUploadFolder, setTargetUploadFolder] = useState('HR');
 
-  // Inspect Modal ke liye state
+  // Inspect Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
 
   // Simulated File Upload Handler
@@ -62,11 +85,16 @@ export default function DocumentsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 sm:space-y-7 pb-10"
+    >
       {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#25211E]">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#25211E] tracking-tight">
             Document Management
           </h2>
           <p className="text-xs sm:text-sm text-[#77716B] mt-1">
@@ -77,15 +105,18 @@ export default function DocumentsPage() {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 self-start sm:self-auto"
         >
           <Upload className="w-4 h-4" />
           <span>Upload Documents</span>
         </button>
-      </div>
+      </motion.div>
 
-      {/* 2. Drag & Drop Upload Card */}
-      <div className="bg-[#FFFFFF] border-2 border-dashed border-[#E8DCD1] hover:border-[#96613F] rounded-[14px] p-6 sm:p-8 transition-colors">
+      {/* 2. Drag & Drop Upload Card (Fully Responsive) */}
+      <motion.div
+        variants={itemVariants}
+        className="bg-[#FFFFFF] border-2 border-dashed border-[#E8DCD1] hover:border-[#96613F] rounded-[16px] p-5 sm:p-7 transition-all duration-300 shadow-sm hover:shadow-md"
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -95,28 +126,28 @@ export default function DocumentsPage() {
           className="hidden"
         />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-start sm:items-center gap-4">
-            <div className="w-12 h-12 rounded-[12px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0">
-              <Upload className="w-6 h-6" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-[12px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0 shadow-sm">
+              <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-[#25211E]">
                 Drag and drop documents here, or click to browse
               </h3>
-              <p className="text-xs text-[#77716B] mt-1">
+              <p className="text-xs text-[#77716B] mt-1 leading-relaxed">
                 Supports PDF, DOCX, and TXT up to 50 MB. Automatic semantic chunking and page-level vector indexing.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 lg:pt-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#77716B]">Target Folder:</span>
+              <span className="text-xs font-semibold text-[#77716B] shrink-0">Target Folder:</span>
               <select
                 value={targetUploadFolder}
                 onChange={(e) => setTargetUploadFolder(e.target.value)}
-                className="px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F]"
+                className="w-full sm:w-auto px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] transition-colors"
               >
                 <option value="HR">HR Folder</option>
                 <option value="IT">IT Folder</option>
@@ -129,30 +160,33 @@ export default function DocumentsPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors"
+              className="w-full sm:w-auto px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors text-center active:scale-95"
             >
               Browse Files
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 3. Search Bar & Dropdown Filters Toolbar */}
-      <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <motion.div
+        variants={itemVariants}
+        className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3"
+      >
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-full md:max-w-md">
           <Search className="w-4 h-4 text-[#77716B] absolute left-3 top-2.5 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search documents by name..."
-            className="w-full pl-9 pr-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F]"
+            className="w-full pl-9 pr-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
           />
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <div className="flex items-center gap-1.5 text-xs text-[#77716B]">
             <Filter className="w-3.5 h-3.5" />
             <span className="font-semibold">Filter:</span>
@@ -161,7 +195,7 @@ export default function DocumentsPage() {
           <select
             value={selectedFolderFilter}
             onChange={(e) => setSelectedFolderFilter(e.target.value)}
-            className="px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
+            className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
           >
             <option value="All">All Folders</option>
             <option value="HR">HR</option>
@@ -174,7 +208,7 @@ export default function DocumentsPage() {
           <select
             value={selectedStatusFilter}
             onChange={(e) => setSelectedStatusFilter(e.target.value)}
-            className="px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
+            className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
           >
             <option value="All">All Statuses</option>
             <option value="Completed">Completed</option>
@@ -183,19 +217,22 @@ export default function DocumentsPage() {
             <option value="Failed">Failed</option>
           </select>
         </div>
-      </div>
+      </motion.div>
 
-      {/* 4. Documents Table / Empty State */}
-      <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] shadow-sm overflow-hidden">
+      {/* 4. Documents Table / Responsive Container */}
+      <motion.div
+        variants={itemVariants}
+        className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
+      >
         {filteredDocuments.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3">
+          <div className="p-10 sm:p-14 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
               <Inbox className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-semibold text-[#25211E]">
+            <h4 className="text-sm font-bold text-[#25211E]">
               {documents.length === 0 ? 'No documents uploaded yet' : 'No matching documents found'}
             </h4>
-            <p className="text-xs text-[#77716B] max-w-sm mx-auto mt-1">
+            <p className="text-xs text-[#77716B] max-w-sm mx-auto mt-1 leading-relaxed">
               {documents.length === 0
                 ? 'Upload your first organization policy or manual above to index it.'
                 : 'Try clearing your search query or changing folder/status filters.'}
@@ -203,9 +240,9 @@ export default function DocumentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
+            <table className="w-full text-left border-collapse text-sm min-w-[620px]">
               <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#E8DCD1] text-xs font-semibold text-[#77716B] uppercase">
+                <tr className="bg-[#FAF7F2] border-b border-[#E8DCD1] text-[11px] font-bold text-[#77716B] uppercase tracking-wider">
                   <th className="px-4 py-3">Document Name</th>
                   <th className="px-4 py-3">Folder</th>
                   <th className="px-4 py-3">File Size</th>
@@ -234,7 +271,7 @@ export default function DocumentsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-[#FAF7F2] border border-[#E8DCD1] text-[#4A3023]">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#FAF7F2] border border-[#E8DCD1] text-[#4A3023]">
                         {doc.folder}
                       </span>
                     </td>
@@ -269,45 +306,45 @@ export default function DocumentsPage() {
             </table>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {/* 5. Document Inspection Modal */}
+      {/* 5. Document Inspection Modal (Fully Responsive) */}
       {inspectingDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 p-4">
-          <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] max-w-lg w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4">
+          <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-5 sm:p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#96613F]" />
-                <h3 className="font-bold text-sm sm:text-base text-[#25211E]">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-5 h-5 text-[#96613F] shrink-0" />
+                <h3 className="font-bold text-sm sm:text-base text-[#25211E] truncate">
                   {inspectingDoc.name}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setInspectingDoc(null)}
-                className="p-1 rounded-lg text-[#77716B] hover:bg-[#FAF7F2]"
+                className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 bg-[#FAF7F2] p-3 rounded-[10px] border border-[#E8DCD1]">
+            <div className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-2.5 bg-[#FAF7F2] p-3.5 rounded-[12px] border border-[#E8DCD1]">
                 <div>
                   <span className="text-[#77716B]">Department Folder:</span>
-                  <p className="font-bold text-[#25211E]">{inspectingDoc.folder}</p>
+                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.folder}</p>
                 </div>
                 <div>
                   <span className="text-[#77716B]">File Size:</span>
-                  <p className="font-bold text-[#25211E]">{inspectingDoc.size}</p>
+                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.size}</p>
                 </div>
                 <div>
                   <span className="text-[#77716B]">Total Pages:</span>
-                  <p className="font-bold text-[#25211E]">{inspectingDoc.pages || 'N/A'}</p>
+                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.pages || 'N/A'}</p>
                 </div>
                 <div>
                   <span className="text-[#77716B]">Vector Chunks:</span>
-                  <p className="font-bold text-[#25211E]">{inspectingDoc.chunks || 'N/A'}</p>
+                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.chunks || 'N/A'}</p>
                 </div>
               </div>
 
@@ -323,7 +360,7 @@ export default function DocumentsPage() {
               <button
                 type="button"
                 onClick={() => setInspectingDoc(null)}
-                className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold"
+                className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors active:scale-95"
               >
                 Close
               </button>
@@ -331,6 +368,6 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

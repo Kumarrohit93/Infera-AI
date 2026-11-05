@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   CheckCircle,
@@ -18,6 +19,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,26 +34,31 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
 
-  // Login handler
+  // Strict Admin Login validation
   const handleLogin = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('Kripya email aur password dono enter karein.');
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      toast.error('Please enter both email and password.');
       return;
     }
 
     setIsLoading(true);
+
     setTimeout(() => {
       setIsLoading(false);
-      toast.success('Admin login successful! Redirecting to Dashboard...');
-    }, 1200);
-  };
 
-  // Demo Admin credentials auto-fill with toast
-  const handleFillDemo = () => {
-    setEmail('admin@infera.ai');
-    setPassword('admin123');
-    toast.success('Demo admin credentials filled!');
+      if (trimmedEmail === 'admin@infera.ai' && trimmedPassword === 'admin123') {
+        localStorage.setItem('isAdminAuth', 'true');
+        toast.success('Admin login successful!');
+        navigate('/dashboard');
+      } else {
+        toast.error('Invalid credentials. Only authorized administrators can sign in.');
+      }
+    }, 700);
   };
 
   // Google Workspace SSO handler
@@ -60,19 +68,21 @@ export default function LoginPage() {
     setTimeout(() => {
       setIsSsoLoading(false);
       toast.dismiss('sso-toast');
-      toast.success('SSO verification initiated!');
-    }, 1500);
+      localStorage.setItem('isAdminAuth', 'true');
+      toast.success('SSO authentication verified!');
+      navigate('/dashboard');
+    }, 1200);
   };
 
   // Forgot password submit
   const handleForgotPassword = (e) => {
     e.preventDefault();
     if (!resetEmail) {
-      toast.error('Email address enter karein.');
+      toast.error('Please enter your work email address.');
       return;
     }
     setResetSent(true);
-    toast.success('Password reset link bhej diya gaya hai!');
+    toast.success('Password reset link has been dispatched.');
   };
 
   // 4 Feature highlight cards data
@@ -106,12 +116,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#FAF7F2] text-[#25211E] overflow-x-hidden selection:bg-[#F3E8DC] selection:text-[#4A3023]">
       
-      {/* ================= LEFT SHOWCASE PANEL ================= */}
+      {/* ================= LEFT SHOWCASE PANEL (HIDDEN ON MOBILE, VISIBLE ON DESKTOP) ================= */}
       <motion.div 
         initial={{ opacity: 0, x: -25 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="w-full lg:w-3/5 p-8 sm:p-12 lg:p-16 flex flex-col justify-between"
+        className="hidden lg:flex lg:w-3/5 p-8 sm:p-12 lg:p-16 flex-col justify-between"
       >
         <div>
           {/* Top Branding */}
@@ -197,13 +207,13 @@ export default function LoginPage() {
         </motion.div>
       </motion.div>
 
-      {/* ================= RIGHT AUTHENTICATION CARD ================= */}
-      <div className="w-full lg:w-2/5 p-6 sm:p-12 flex items-center justify-center bg-[#FAF7F2]">
+      {/* ================= RIGHT AUTHENTICATION CARD (ONLY THIS CARD ON MOBILE) ================= */}
+      <div className="w-full lg:w-2/5 min-h-screen p-4 sm:p-8 lg:p-12 flex items-center justify-center bg-[#FAF7F2]">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-          className="w-full max-w-md bg-white border border-[#E8DCD1] rounded-3xl p-8 sm:p-10 shadow-sm"
+          initial={{ opacity: 0, scale: 0.96, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="w-full max-w-[420px] bg-white border border-[#E8DCD1] rounded-[24px] sm:rounded-3xl p-6 sm:p-8 lg:p-9 shadow-sm"
         >
           
           {/* Form Header */}
@@ -211,7 +221,7 @@ export default function LoginPage() {
             <span className="text-[11px] font-bold tracking-wider uppercase text-[#96613F]">
               Workspace Administration
             </span>
-            <h2 className="text-2xl font-bold text-[#25211E] mt-1">Admin Login</h2>
+            <h2 className="text-2xl font-bold text-[#25211E] mt-1 tracking-tight">Admin Login</h2>
             <p className="text-xs text-[#77716B] mt-1.5 leading-relaxed">
               Sign in with your administrator credentials to manage documents, permissions, and AI retrieval settings.
             </p>
@@ -224,7 +234,7 @@ export default function LoginPage() {
                 Work Email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#77716B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-[#77716B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
                   value={email}
@@ -252,7 +262,7 @@ export default function LoginPage() {
               </div>
 
               <div className="relative">
-                <Lock className="w-4 h-4 text-[#77716B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-[#77716B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -264,14 +274,14 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77716B] hover:text-[#25211E] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77716B] hover:text-[#25211E] transition-colors p-0.5"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Remember Me & Fill Demo Admin */}
+            {/* Keep me signed in */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -282,14 +292,6 @@ export default function LoginPage() {
                 />
                 <span className="text-xs text-[#77716B]">Keep me signed in for 30 days</span>
               </label>
-
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                className="text-xs font-semibold text-[#96613F] hover:underline transition-colors"
-              >
-                Fill Demo Admin
-              </button>
             </div>
 
             {/* Submit Button */}
@@ -361,11 +363,10 @@ export default function LoginPage() {
         </motion.div>
       </div>
 
-      {/* ================= FORGOT PASSWORD MODAL (ANIMATED) ================= */}
+      {/* ================= FORGOT PASSWORD MODAL ================= */}
       <AnimatePresence>
         {isForgotModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -378,7 +379,6 @@ export default function LoginPage() {
               className="absolute inset-0 bg-black/40 backdrop-blur-xs"
             />
 
-            {/* Modal Box */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -402,7 +402,7 @@ export default function LoginPage() {
                   <div>
                     <h3 className="text-base font-bold text-[#25211E]">Reset Password</h3>
                     <p className="text-xs text-[#77716B] mt-1">
-                      Apna registered work email enter karein, hum password reset link send karenge.
+                      Enter your registered work email to receive password reset instructions.
                     </p>
                   </div>
 
@@ -440,9 +440,9 @@ export default function LoginPage() {
               ) : (
                 <div className="text-center py-4 space-y-3">
                   <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <h3 className="text-sm font-bold text-[#25211E]">Link Sent</h3>
+                  <h3 className="text-sm font-bold text-[#25211E]">Link Dispatched</h3>
                   <p className="text-xs text-[#77716B]">
-                    Instructions bhej diye gaye hain to: <br />
+                    Reset instructions have been sent to: <br />
                     <span className="font-semibold text-[#25211E]">{resetEmail}</span>
                   </p>
                   <motion.button
