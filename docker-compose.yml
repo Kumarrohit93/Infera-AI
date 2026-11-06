@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: infera-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Himanshu93$
+      POSTGRES_DB: infera_ai
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+  - infera_postgres_data:/var/lib/postgresql/data
+  - ./Docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d infera_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  infera_postgres_data:
