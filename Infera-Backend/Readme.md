@@ -5,7 +5,7 @@
 Install the packages with NPM:
 
 ```bash
-npm i express pg dotenv cors helmet jsonwebtoken bcrypt zod multer
+npm i express pg dotenv cors helmet jsonwebtoken bcryptjs zod multer
 ```
 
 ## 2.) Run the backend

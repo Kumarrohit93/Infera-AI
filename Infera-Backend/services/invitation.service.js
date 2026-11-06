@@ -1,5 +1,5 @@
 const crypto = require("crypto")
-const bcrypt = require("bcrypt")
+const bcrypt = require("bcryptjs")
 const { pool } = require("../config/db")
 const AppError = require("../utils/AppError")
 const { signAccessToken } = require("../utils/token")
