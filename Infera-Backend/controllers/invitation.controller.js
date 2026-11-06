@@ -1,4 +1,4 @@
-const { createInvitationSchema } = require("../validators/invitation.validator")
+const { createInvitationSchema, acceptInvitationSchema } = require("../validators/invitation.validator")
 const invitationService = require("../services/invitation.service")
 const { parseOrThrow } = require("../utils/validate")
 
@@ -12,4 +12,10 @@ async function createInvitation(req, res) {
   res.status(201).json({ success: true, data: { invitation } })
 }
 
-module.exports = { createInvitation }
+async function acceptInvitation(req, res) {
+  const data = parseOrThrow(acceptInvitationSchema, req.body)
+  const result = await invitationService.acceptInvitation(data)
+  res.status(201).json({ success: true, data: result })
+}
+
+module.exports = { createInvitation, acceptInvitation }

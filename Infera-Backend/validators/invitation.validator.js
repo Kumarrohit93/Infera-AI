@@ -5,4 +5,10 @@ const createInvitationSchema = z.object({
   role: z.enum(["admin", "member"]),
 })
 
-module.exports = { createInvitationSchema }
+const acceptInvitationSchema = z.object({
+  token: z.string().min(1).max(200),
+  name: z.string().trim().min(2).max(100),
+  password: z.string().min(8).max(72),
+})
+
+module.exports = { createInvitationSchema, acceptInvitationSchema }

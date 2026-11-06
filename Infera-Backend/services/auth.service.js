@@ -4,7 +4,7 @@ const AppError = require("../utils/AppError")
 const { signAccessToken } = require("../utils/token")
 
 async function registerOrganization({ organizationName, name, email, password }) {
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await bcrypt.hash(password, 12)
 
   const client = await pool.connect()
   try {
