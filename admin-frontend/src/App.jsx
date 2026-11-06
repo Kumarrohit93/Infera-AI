@@ -7,8 +7,10 @@ import DashboardPage from './pages/DashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
 import FoldersPage from './pages/FoldersPage';
 import TeamMembersPage from './pages/TeamMembersPage';
+import FeedbackPage from './pages/FeedbackPage';
+import SettingsPage from './pages/SettingsPage';
+import ChatPage from './pages/ChatPage';
 
-// 1. Protected Route: Bina login credentials ke koi bhi andar nahi ja sakta
 function ProtectedRoute({ children }) {
   const isAuth = localStorage.getItem('isAdminAuth') === 'true';
   if (!isAuth) {
@@ -17,7 +19,6 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-// 2. Public Route: Agar already logged in hai toh login page ke bajaye dashboard par bhej de
 function PublicRoute({ children }) {
   const isAuth = localStorage.getItem('isAdminAuth') === 'true';
   if (isAuth) {
@@ -26,12 +27,18 @@ function PublicRoute({ children }) {
   return children;
 }
 
+function RootRedirect() {
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  return isAuth ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
       <Routes>
-        {/* Login Page Route */}
+        <Route path="/" element={<RootRedirect />} />
+
         <Route
           path="/login"
           element={
@@ -41,23 +48,22 @@ export default function App() {
           }
         />
 
-        {/* 100% Protected Admin Routes */}
         <Route
-          path="/"
           element={
             <ProtectedRoute>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="documents" element={<DocumentsPage />} />
-          <Route path="folders" element={<FoldersPage />} />
-          <Route path="members" element={<TeamMembersPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/folders" element={<FoldersPage />} />
+          <Route path="/members" element={<TeamMembersPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
-        {/* Fallback to Login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
