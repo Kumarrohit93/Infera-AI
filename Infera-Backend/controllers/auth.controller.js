@@ -1,18 +1,6 @@
-const AppError = require("../utils/AppError")
 const { registerSchema, loginSchema } = require("../validators/auth.validator")
 const authService = require("../services/auth.service")
-
-function parseOrThrow(schema, body) {
-  const parsed = schema.safeParse(body)
-  if (!parsed.success) {
-    const details = parsed.error.issues.map((i) => ({
-      field: i.path.join("."),
-      message: i.message,
-    }))
-    throw new AppError(400, "VALIDATION_ERROR", "Invalid input", details)
-  }
-  return parsed.data
-}
+const { parseOrThrow } = require("../utils/validate")
 
 async function registerOrganization(req, res) {
   const data = parseOrThrow(registerSchema, req.body)
