@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderKanban,
   Plus,
@@ -201,7 +201,7 @@ export default function FoldersPage() {
           <button
             type="button"
             onClick={() => setViewMode('grid')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold transition-all cursor-pointer ${
               viewMode === 'grid'
                 ? 'bg-[#96613F] text-white shadow-xs'
                 : 'text-[#77716B] hover:text-[#25211E]'
@@ -213,7 +213,7 @@ export default function FoldersPage() {
           <button
             type="button"
             onClick={() => setViewMode('table')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold transition-all cursor-pointer ${
               viewMode === 'table'
                 ? 'bg-[#96613F] text-white shadow-xs'
                 : 'text-[#77716B] hover:text-[#25211E]'
@@ -262,7 +262,7 @@ export default function FoldersPage() {
               return (
                 <div
                   key={folder.id}
-                  className="group bg-[#FFFFFF] border border-[#E8DCD1] hover:border-[#96613F]/60 rounded-[16px] p-5 shadow-sm hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between"
+                  className="group bg-[#FFFFFF] border border-[#E8DCD1] hover:border-[#96613F]/60 rounded-[16px] p-5 shadow-sm hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3">
@@ -285,7 +285,7 @@ export default function FoldersPage() {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(folder)}
-                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors"
+                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
                           title="Edit Folder"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -293,7 +293,7 @@ export default function FoldersPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteFolder(folder.id, folder.name)}
-                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors"
+                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Delete Folder"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -405,7 +405,7 @@ export default function FoldersPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(folder)}
-                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors"
+                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
                             title="Edit Folder"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -413,7 +413,7 @@ export default function FoldersPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteFolder(folder.id, folder.name)}
-                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors"
+                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                             title="Delete Folder"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -429,104 +429,118 @@ export default function FoldersPage() {
         )}
       </motion.div>
 
-      {/* 4. Create / Edit Folder Modal (Fully Responsive) */}
-      {(isCreateModalOpen || editingFolder) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-md w-full p-5 sm:p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
-              <div className="flex items-center gap-2">
-                <FolderKanban className="w-5 h-5 text-[#96613F]" />
-                <h3 className="font-bold text-sm sm:text-base text-[#25211E]">
-                  {editingFolder ? 'Edit Folder' : 'Create New Folder'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  setEditingFolder(null);
-                }}
-                className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitFolder} className="mt-4 space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-[#25211E] mb-1">Folder Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Legal & Compliance"
-                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#25211E] mb-1">Description</label>
-                <textarea
-                  rows={2}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe what documents will be placed here..."
-                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#25211E] mb-1.5">
-                  Select Members Who Can Access This Folder:
-                </label>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto bg-[#FAF7F2] p-2.5 rounded-[8px] border border-[#E8DCD1]">
-                  {availableOrgMembers.map((member) => {
-                    const isChecked = formData.selectedMembers.includes(member);
-                    return (
-                      <label
-                        key={member}
-                        onClick={() => toggleMemberSelection(member)}
-                        className="flex items-center gap-2 p-1.5 rounded hover:bg-[#FFFFFF] cursor-pointer transition-colors"
-                      >
-                        <div
-                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                            isChecked
-                              ? 'bg-[#96613F] border-[#96613F] text-white'
-                              : 'bg-white border-[#E8DCD1]'
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                        <span className="font-medium text-[#25211E]">{member}</span>
-                      </label>
-                    );
-                  })}
+      {/* 4. Create / Edit Folder Modal (Smooth 150ms AnimatePresence) */}
+      <AnimatePresence>
+        {(isCreateModalOpen || editingFolder) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-md w-full p-5 sm:p-6 shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
+                <div className="flex items-center gap-2">
+                  <FolderKanban className="w-5 h-5 text-[#96613F]" />
+                  <h3 className="font-bold text-sm sm:text-base text-[#25211E]">
+                    {editingFolder ? 'Edit Folder' : 'Create New Folder'}
+                  </h3>
                 </div>
-              </div>
-
-              <div className="pt-3 border-t border-[#E8DCD1] flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setIsCreateModalOpen(false);
                     setEditingFolder(null);
                   }}
-                  className="px-3.5 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] font-semibold transition-colors"
+                  className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
-                >
-                  {editingFolder ? 'Save Changes' : 'Create Folder'}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleSubmitFolder} className="mt-4 space-y-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-[#25211E] mb-1">Folder Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Legal & Compliance"
+                    className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#25211E] mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe what documents will be placed here..."
+                    className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#25211E] mb-1.5">
+                    Select Members Who Can Access This Folder:
+                  </label>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-sidebar-scroll bg-[#FAF7F2] p-2.5 rounded-[8px] border border-[#E8DCD1]">
+                    {availableOrgMembers.map((member) => {
+                      const isChecked = formData.selectedMembers.includes(member);
+                      return (
+                        <label
+                          key={member}
+                          onClick={() => toggleMemberSelection(member)}
+                          className="flex items-center gap-2 p-1.5 rounded hover:bg-[#FFFFFF] cursor-pointer transition-colors"
+                        >
+                          <div
+                            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                              isChecked
+                                ? 'bg-[#96613F] border-[#96613F] text-white'
+                                : 'bg-white border-[#E8DCD1]'
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                          <span className="font-medium text-[#25211E]">{member}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-[#E8DCD1] flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreateModalOpen(false);
+                      setEditingFolder(null);
+                    }}
+                    className="px-3.5 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] font-semibold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    {editingFolder ? 'Save Changes' : 'Create Folder'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

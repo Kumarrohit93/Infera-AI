@@ -1,3 +1,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Crisp enterprise typography rendering */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  /* Global luxury ultra-thin scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #E8DCD1;
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #96613F;
+  }
+
+  /* Firefox scrollbar support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #E8DCD1 transparent;
+  }
+}
+
+/* Sidebar precision custom scrollbar (Referenced in Sidebar.jsx) */
+.custom-sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #E8DCD1;
+  border-radius: 9999px;
+}
+
+.custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #96613F;
+}
+
+/* Accessible reduced-motion compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-position: 0 0 !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
+
+  /* Functional loading spinners ko spin karte rehne dena zaroori hai */
+  .animate-spin {
+    animation: spin 1s linear infinite !important;
+  }
+}

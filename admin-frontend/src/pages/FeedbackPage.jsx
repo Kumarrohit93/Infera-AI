@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ThumbsUp,
   ThumbsDown,
@@ -83,15 +83,15 @@ export default function FeedbackPage() {
       {/* 2. Top Summary Metric Cards */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
         {/* Total Feedback */}
-        <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+        <div className="group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-[#96613F]/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-[#77716B]">
                 Total Ratings
               </p>
-              <h3 className="text-2xl font-bold text-[#25211E] mt-1.5">{totalCount}</h3>
+              <h3 className="text-2xl font-bold text-[#25211E] mt-1.5 tracking-tight">{totalCount}</h3>
             </div>
-            <div className="w-10 h-10 rounded-[10px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0">
+            <div className="w-10 h-10 rounded-[10px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0 transition-transform duration-200 group-hover:scale-105">
               <MessageSquare className="w-5 h-5" />
             </div>
           </div>
@@ -101,15 +101,15 @@ export default function FeedbackPage() {
         </div>
 
         {/* Helpful Satisfaction */}
-        <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+        <div className="group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-[#2B6141]/40">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-[#77716B]">
                 Helpful Rate
               </p>
-              <h3 className="text-2xl font-bold text-[#2B6141] mt-1.5">{helpfulPercentage}%</h3>
+              <h3 className="text-2xl font-bold text-[#2B6141] mt-1.5 tracking-tight">{helpfulPercentage}%</h3>
             </div>
-            <div className="w-10 h-10 rounded-[10px] bg-[#EEF5F0] border border-[#CBE3D3] flex items-center justify-center text-[#2B6141] shrink-0">
+            <div className="w-10 h-10 rounded-[10px] bg-[#EEF5F0] border border-[#CBE3D3] flex items-center justify-center text-[#2B6141] shrink-0 transition-transform duration-200 group-hover:scale-105">
               <ThumbsUp className="w-5 h-5" />
             </div>
           </div>
@@ -119,15 +119,15 @@ export default function FeedbackPage() {
         </div>
 
         {/* Unhelpful / Needs Review */}
-        <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 sm:col-span-3 lg:col-span-1">
+        <div className="group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-[#A83833]/40 sm:col-span-3 lg:col-span-1">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-[#77716B]">
                 Needs Review
               </p>
-              <h3 className="text-2xl font-bold text-[#A83833] mt-1.5">{unhelpfulCount}</h3>
+              <h3 className="text-2xl font-bold text-[#A83833] mt-1.5 tracking-tight">{unhelpfulCount}</h3>
             </div>
-            <div className="w-10 h-10 rounded-[10px] bg-[#FDF0EF] border border-[#F3C9C6] flex items-center justify-center text-[#A83833] shrink-0">
+            <div className="w-10 h-10 rounded-[10px] bg-[#FDF0EF] border border-[#F3C9C6] flex items-center justify-center text-[#A83833] shrink-0 transition-transform duration-200 group-hover:scale-105">
               <ThumbsDown className="w-5 h-5" />
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function FeedbackPage() {
                       <button
                         type="button"
                         onClick={() => setInspectingFeedback(item)}
-                        className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors"
+                        className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-all duration-150 active:scale-90 cursor-pointer"
                         title="Inspect Response"
                       >
                         <Eye className="w-4 h-4" />
@@ -238,73 +238,87 @@ export default function FeedbackPage() {
         )}
       </motion.div>
 
-      {/* 5. Inspection Modal */}
-      {inspectingFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-5 sm:p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-[#96613F]" />
-                <h3 className="font-bold text-sm sm:text-base text-[#25211E]">
-                  Answer Quality Inspection
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectingFeedback(null)}
-                className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3.5 text-xs">
-              <div className="bg-[#FAF7F2] p-3.5 rounded-[12px] border border-[#E8DCD1] space-y-2">
-                <div>
-                  <span className="text-[#77716B] font-semibold">Asked By:</span>
-                  <p className="font-bold text-[#25211E]">{inspectingFeedback.user}</p>
+      {/* 5. Inspection Modal (Smooth 150ms AnimatePresence) */}
+      <AnimatePresence>
+        {inspectingFeedback && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-5 sm:p-6 shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-[#96613F]" />
+                  <h3 className="font-bold text-sm sm:text-base text-[#25211E]">
+                    Answer Quality Inspection
+                  </h3>
                 </div>
-                <div>
-                  <span className="text-[#77716B] font-semibold">User Query:</span>
-                  <p className="text-[#25211E] font-medium mt-0.5">"{inspectingFeedback.question}"</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setInspectingFeedback(null)}
+                  className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div>
-                <span className="text-[#77716B] font-semibold">AI Generated Response:</span>
-                <p className="text-[#25211E] bg-[#FFFFFF] p-3 rounded-[10px] border border-[#E8DCD1] mt-1 leading-relaxed">
-                  {inspectingFeedback.aiAnswer}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1]">
-                  <span className="text-[#77716B]">User Rating:</span>
-                  <div className="mt-1">
-                    <StatusBadge status={inspectingFeedback.rating} />
+              <div className="mt-4 space-y-3.5 text-xs">
+                <div className="bg-[#FAF7F2] p-3.5 rounded-[12px] border border-[#E8DCD1] space-y-2">
+                  <div>
+                    <span className="text-[#77716B] font-semibold">Asked By:</span>
+                    <p className="font-bold text-[#25211E]">{inspectingFeedback.user}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#77716B] font-semibold">User Query:</span>
+                    <p className="text-[#25211E] font-medium mt-0.5">"{inspectingFeedback.question}"</p>
                   </div>
                 </div>
-                <div className="p-2.5 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1]">
-                  <span className="text-[#77716B]">Cited Source:</span>
-                  <p className="font-bold text-[#25211E] truncate mt-1">
-                    {inspectingFeedback.sourceDoc}
+
+                <div>
+                  <span className="text-[#77716B] font-semibold">AI Generated Response:</span>
+                  <p className="text-[#25211E] bg-[#FFFFFF] p-3 rounded-[10px] border border-[#E8DCD1] mt-1 leading-relaxed">
+                    {inspectingFeedback.aiAnswer}
                   </p>
                 </div>
-              </div>
-            </div>
 
-            <div className="mt-6 pt-3 border-t border-[#E8DCD1] flex justify-end">
-              <button
-                type="button"
-                onClick={() => setInspectingFeedback(null)}
-                className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1]">
+                    <span className="text-[#77716B]">User Rating:</span>
+                    <div className="mt-1">
+                      <StatusBadge status={inspectingFeedback.rating} />
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1]">
+                    <span className="text-[#77716B]">Cited Source:</span>
+                    <p className="font-bold text-[#25211E] truncate mt-1">
+                      {inspectingFeedback.sourceDoc}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-3 border-t border-[#E8DCD1] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setInspectingFeedback(null)}
+                  className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

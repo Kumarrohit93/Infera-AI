@@ -55,7 +55,7 @@ export default function Navbar({ onOpenMobileSidebar }) {
   };
 
   return (
-    <header className="h-16 bg-[#FFFFFF] border-b border-[#E8DCD1] px-3.5 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30">
+    <header className="h-16 bg-[#FFFFFF]/90 backdrop-blur-md border-b border-[#E8DCD1] px-3.5 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30 transition-all">
       {/* Mobile Search Overlay when active */}
       {mobileSearchActive && (
         <div className="absolute inset-0 bg-[#FFFFFF] z-50 px-4 flex items-center gap-2 md:hidden">
@@ -74,7 +74,7 @@ export default function Navbar({ onOpenMobileSidebar }) {
               setMobileSearchActive(false);
               setSearchQuery('');
             }}
-            className="p-1 rounded-lg text-[#77716B]"
+            className="p-1 rounded-lg text-[#77716B] hover:text-[#25211E] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -87,7 +87,7 @@ export default function Navbar({ onOpenMobileSidebar }) {
           type="button"
           onClick={onOpenMobileSidebar}
           aria-label="Open sidebar"
-          className="lg:hidden p-2 rounded-[8px] text-[#77716B] hover:text-[#25211E] hover:bg-[#FAF7F2] border border-[#E8DCD1] shrink-0"
+          className="lg:hidden p-2 rounded-[8px] text-[#77716B] hover:text-[#25211E] hover:bg-[#FAF7F2] border border-[#E8DCD1] transition-all active:scale-95 shrink-0"
         >
           <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -98,7 +98,7 @@ export default function Navbar({ onOpenMobileSidebar }) {
             <ChevronRight className="w-3 h-3 hidden sm:inline" />
             <span className="font-semibold text-[#96613F] truncate">{currentMeta.title}</span>
           </div>
-          <h1 className="text-sm sm:text-base md:text-lg font-bold text-[#25211E] truncate">
+          <h1 className="text-sm sm:text-base md:text-lg font-bold text-[#25211E] tracking-tight truncate">
             {currentMeta.title}
           </h1>
         </div>
@@ -115,9 +115,9 @@ export default function Navbar({ onOpenMobileSidebar }) {
             onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search documents, folders, or members..."
-            className="w-full pl-9 pr-14 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-all"
+            className="w-full pl-9 pr-14 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/10 transition-all duration-150"
           />
-          <span className="absolute right-2.5 text-[10px] font-bold text-[#77716B] bg-[#FFFFFF] px-1.5 py-0.5 rounded border border-[#E8DCD1]">
+          <span className="absolute right-2.5 text-[10px] font-bold text-[#77716B] bg-[#FFFFFF] px-1.5 py-0.5 rounded border border-[#E8DCD1] shadow-2xs">
             Ctrl+K
           </span>
         </div>
@@ -129,17 +129,17 @@ export default function Navbar({ onOpenMobileSidebar }) {
         <button
           type="button"
           onClick={() => setMobileSearchActive(true)}
-          className="md:hidden p-2 rounded-[8px] bg-[#FAF7F2] text-[#77716B] border border-[#E8DCD1]"
+          className="md:hidden p-2 rounded-[8px] bg-[#FAF7F2] text-[#77716B] border border-[#E8DCD1] active:scale-95 transition-all"
           title="Search"
         >
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Quick Test AI Button (Hidden on small phones, visible on sm+) */}
+        {/* Quick Test AI Button */}
         <button
           type="button"
           onClick={() => navigate('/chat')}
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F3E8DC] hover:bg-[#E8DCD1] text-[#4A3023] text-xs font-semibold border border-[#E8DCD1] transition-colors"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F3E8DC] hover:bg-[#E8DCD1] text-[#4A3023] text-xs font-semibold border border-[#E8DCD1] transition-all duration-150 active:scale-95 shadow-2xs cursor-pointer"
         >
           <Sparkles className="w-3.5 h-3.5 text-[#96613F]" />
           <span>Test AI</span>
@@ -151,16 +151,16 @@ export default function Navbar({ onOpenMobileSidebar }) {
             type="button"
             onClick={() => setShowNotifications(!showNotifications)}
             aria-label="View notifications"
-            className="relative p-2 rounded-[8px] sm:rounded-[10px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] transition-colors"
+            className="relative p-2 rounded-[8px] sm:rounded-[10px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] transition-all duration-150 active:scale-95 cursor-pointer"
           >
             <Bell className="w-4 h-4 text-[#77716B]" />
             {unreadCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-[#96613F] absolute top-1.5 right-1.5" />
+              <span className="w-2 h-2 rounded-full bg-[#96613F] absolute top-1.5 right-1.5 ring-2 ring-white" />
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] shadow-xl z-50 overflow-hidden">
+            <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-[#FFFFFF]/95 backdrop-blur-md border border-[#E8DCD1] rounded-[12px] shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
               <div className="px-4 py-3 bg-[#FAF7F2] border-b border-[#E8DCD1] flex items-center justify-between">
                 <span className="text-xs font-bold text-[#25211E]">
                   Notifications ({unreadCount})
@@ -168,18 +168,18 @@ export default function Navbar({ onOpenMobileSidebar }) {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#96613F]"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#96613F] hover:text-[#4A3023] transition-colors cursor-pointer"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Mark read
                 </button>
               </div>
 
-              <div className="divide-y divide-[#E8DCD1] max-h-60 overflow-y-auto">
+              <div className="divide-y divide-[#E8DCD1] max-h-60 overflow-y-auto custom-sidebar-scroll">
                 {notifications.map((item) => (
-                  <div key={item.id} className="px-4 py-3 text-xs bg-[#FFFFFF]">
+                  <div key={item.id} className="px-4 py-3 text-xs bg-[#FFFFFF] hover:bg-[#FAF7F2]/60 transition-colors">
                     <p className="font-semibold text-[#25211E]">{item.title}</p>
-                    <p className="text-[#77716B] mt-0.5 text-[11px]">{item.detail}</p>
+                    <p className="text-[#77716B] mt-0.5 text-[11px] leading-relaxed">{item.detail}</p>
                     <p className="text-[10px] text-[#96613F] mt-1 font-semibold">{item.time}</p>
                   </div>
                 ))}
@@ -191,9 +191,9 @@ export default function Navbar({ onOpenMobileSidebar }) {
         {/* Admin Profile */}
         <div
           onClick={() => navigate('/settings')}
-          className="flex items-center gap-2 pl-1 sm:pl-1.5 pr-1.5 sm:pr-2 py-1 rounded-[10px] hover:bg-[#FAF7F2] cursor-pointer border border-transparent hover:border-[#E8DCD1] transition-colors"
+          className="flex items-center gap-2 pl-1 sm:pl-1.5 pr-1.5 sm:pr-2 py-1 rounded-[10px] hover:bg-[#FAF7F2] cursor-pointer border border-transparent hover:border-[#E8DCD1] transition-all duration-150 active:scale-98"
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#96613F] text-white text-[11px] sm:text-xs font-bold flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#96613F] text-white text-[11px] sm:text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
             JS
           </div>
           <div className="hidden md:block leading-tight text-left">

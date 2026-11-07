@@ -101,7 +101,7 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
           isResizing ? 'bg-[#96613F]/30' : 'hover:bg-[#96613F]/20'
         }`}
       >
-        <div className="w-[2px] h-8 rounded-full bg-[#E8DCD1] group-hover:bg-[#96613F] transition-colors" />
+        <div className="w-[2px] h-8 rounded-full bg-[#E8DCD1] group-hover:bg-[#96613F] transition-colors duration-150" />
       </div>
 
       {/* Top Part: Header + Navigation */}
@@ -119,7 +119,7 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
                 setCollapsed(false);
                 setSidebarWidth(256);
               }}
-              className="w-10 h-10 rounded-[12px] bg-[#96613F] text-white flex items-center justify-center shadow-xs hover:bg-[#4A3023] transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-[12px] bg-[#96613F] text-white flex items-center justify-center shadow-xs hover:bg-[#4A3023] transition-all duration-150 active:scale-95 cursor-pointer"
               title="Click to Expand Sidebar"
             >
               <Sparkles className="w-5 h-5" />
@@ -127,7 +127,7 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
           ) : (
             <>
               <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] bg-[#96613F] text-white flex items-center justify-center shrink-0 shadow-sm">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] bg-[#96613F] text-white flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200 hover:scale-105">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 leading-tight">
@@ -154,7 +154,7 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
                 <button
                   type="button"
                   onClick={() => setCollapsed(true)}
-                  className="hidden lg:flex p-1.5 rounded-lg text-[#77716B] hover:text-[#25211E] hover:bg-[#FAF7F2] border border-transparent hover:border-[#E8DCD1] transition-colors cursor-pointer"
+                  className="hidden lg:flex p-1.5 rounded-lg text-[#77716B] hover:text-[#25211E] hover:bg-[#FAF7F2] border border-transparent hover:border-[#E8DCD1] transition-all duration-150 active:scale-95 cursor-pointer"
                   title="Collapse Sidebar"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -181,16 +181,16 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
                 onClick={() => onCloseMobile && onCloseMobile()}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-xs sm:text-sm font-medium transition-all ${
+                  `group flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-xs sm:text-sm font-medium transition-all duration-150 ${
                     collapsed ? 'justify-center' : ''
                   } ${
                     isActive
-                      ? 'bg-[#F3E8DC] text-[#96613F] font-semibold border border-[#E8DCD1]'
+                      ? 'bg-[#F3E8DC] text-[#96613F] font-semibold border border-[#E8DCD1] shadow-2xs'
                       : 'text-[#77716B] hover:bg-[#FAF7F2] hover:text-[#25211E] border border-transparent'
                   }`
                 }
               >
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </NavLink>
             );
@@ -201,11 +201,11 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
       {/* Bottom Part: Status + Logout */}
       <div className="p-3 border-t border-[#E8DCD1] bg-[#FAF7F2]/60 space-y-2 shrink-0">
         {!collapsed && (
-          <div className="px-3 py-2 rounded-[10px] bg-[#FFFFFF] border border-[#E8DCD1] text-xs">
+          <div className="px-3 py-2 rounded-[10px] bg-[#FFFFFF] border border-[#E8DCD1] text-xs shadow-2xs">
             <div className="flex items-center justify-between font-semibold">
               <span className="text-[#25211E]">Vector Index</span>
               <span className="text-[#2B6141] flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#2B6141]"></span>
+                <span className="w-2 h-2 rounded-full bg-[#2B6141] animate-pulse"></span>
                 Online
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function Sidebar({ collapsed, setCollapsed, onCloseMobile, onLogo
         <button
           type="button"
           onClick={onLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-[10px] text-xs sm:text-sm font-medium text-[#77716B] hover:bg-[#FDF0EF] hover:text-[#A83833] border border-transparent hover:border-[#F3C9C6] transition-colors cursor-pointer ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-[10px] text-xs sm:text-sm font-medium text-[#77716B] hover:bg-[#FDF0EF] hover:text-[#A83833] border border-transparent hover:border-[#F3C9C6] transition-all duration-150 active:scale-98 cursor-pointer ${
             collapsed ? 'justify-center' : ''
           }`}
           title={collapsed ? 'Logout' : undefined}

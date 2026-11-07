@@ -4,8 +4,8 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, on
   return (
     <div
       onClick={onClick}
-      className={`bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-5 shadow-sm transition-all duration-150 ${
-        onClick ? 'cursor-pointer hover:border-[#96613F] hover:shadow' : ''
+      className={`group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-5 shadow-xs transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-[#96613F]/50 ${
+        onClick ? 'cursor-pointer' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -13,14 +13,14 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, on
           <p className="text-xs font-semibold uppercase tracking-wider text-[#77716B]">
             {title}
           </p>
-          <h3 className="text-2xl font-bold text-[#25211E] mt-1.5">
+          <h3 className="text-2xl font-bold text-[#25211E] mt-1.5 tracking-tight">
             {value}
           </h3>
         </div>
 
         {Icon && (
-          <div className="w-10 h-10 rounded-[10px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0">
-            <Icon className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-[10px] bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shrink-0 transition-colors duration-200 group-hover:bg-[#FAF7F2] group-hover:border-[#96613F]/40">
+            <Icon className="w-5 h-5 transition-transform duration-200 group-hover:scale-105" />
           </div>
         )}
       </div>
