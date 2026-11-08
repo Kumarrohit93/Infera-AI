@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import BrandLogo from '../common/BrandLogo'
 
+
 const navigationItems = [
   { label: 'Dashboard', icon: LayoutDashboard },
   { label: 'Documents', icon: FileText },
