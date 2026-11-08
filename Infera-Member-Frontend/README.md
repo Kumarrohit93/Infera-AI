@@ -113,6 +113,7 @@ Focused on building the initial Member Dashboard interface and workspace navigat
 - Improved spacing, typography, icons and overall SaaS-style dashboard design.
 - Prepared the dashboard for upcoming document and AI functionality.
 
+
 ## 📌 Development Status
 
 The Member Panel is currently under active development. Further features and integrations will be implemented in upcoming development phases.
