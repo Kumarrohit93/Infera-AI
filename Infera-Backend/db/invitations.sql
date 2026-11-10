@@ -11,4 +11,4 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_invitations_org ON invitations(organization_id);
-CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email)
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);

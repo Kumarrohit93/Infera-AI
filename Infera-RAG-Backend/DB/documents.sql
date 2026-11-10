@@ -18,15 +18,17 @@ CREATE TABLE IF NOT EXISTS documents (
 
     UNIQUE (id, organization_id),
 
+    -- PG16 syntax: Folder deletion sets folder_id to NULL; document stays in organization
     CONSTRAINT fk_documents_folder_same_org
         FOREIGN KEY (folder_id, organization_id)
         REFERENCES folders(id, organization_id)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL (folder_id),
 
+    -- PG16 syntax: Member removal sets uploaded_by to NULL; document stays in organization
     CONSTRAINT fk_documents_uploader_same_org
         FOREIGN KEY (organization_id, uploaded_by)
         REFERENCES organization_members(organization_id, user_id)
-        ON DELETE SET NULL
+        ON DELETE SET NULL (uploaded_by)
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_org_status
