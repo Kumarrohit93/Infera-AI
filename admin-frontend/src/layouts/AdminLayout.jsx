@@ -34,10 +34,10 @@ export default function AdminLayout({ children }) {
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-[#25211E]/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#25211E]/50 backdrop-blur-sm transition-opacity duration-200"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <div className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl animate-in slide-in-from-left duration-200 ease-out">
             <Sidebar
               collapsed={false}
               setCollapsed={() => setMobileSidebarOpen(false)}
@@ -59,7 +59,7 @@ export default function AdminLayout({ children }) {
         </div>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 lg:p-7">
+        <main className="flex-1 overflow-y-auto custom-sidebar-scroll p-3.5 sm:p-5 md:p-6 lg:p-7">
           <div className="max-w-[1440px] w-full mx-auto">
             {children || <Outlet />}
           </div>
