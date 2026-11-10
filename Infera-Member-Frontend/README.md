@@ -88,6 +88,32 @@ The first development day focused on establishing the Member Frontend environmen
 - Implemented entrance transitions and interactive hover effects.
 - Worked on responsive layout behaviour.
 
+
+## 📅 Day 2 — Member Dashboard UI
+
+Focused on building the initial Member Dashboard interface and workspace navigation.
+
+### Work Completed
+
+**1. Dashboard Layout**
+- Created the Member Dashboard page structure.
+- Added responsive workspace layout with Sidebar and Topbar.
+
+**2. Sidebar Navigation**
+- Added Dashboard, Documents, AI Chat and History navigation.
+- Added Settings and Logout options.
+- Added active navigation state and member profile section.
+- Added responsive mobile sidebar behaviour.
+
+**3. Dashboard Components**
+- Created reusable `Sidebar`, `Topbar`, `StatCard`, `QuickAsk` and `RecentDocuments` components.
+- Maintained the existing Infera AI purple-based UI theme and branding.
+
+**4. UI & Responsiveness**
+- Improved spacing, typography, icons and overall SaaS-style dashboard design.
+- Prepared the dashboard for upcoming document and AI functionality.
+
+
 ## 📌 Development Status
 
 The Member Panel is currently under active development. Further features and integrations will be implemented in upcoming development phases.
