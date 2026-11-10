@@ -129,7 +129,7 @@ export default function ChatPage() {
           <button
             type="button"
             onClick={handleNewChat}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Chat</span>
@@ -159,7 +159,7 @@ export default function ChatPage() {
         </div>
 
         {/* Recent Conversations List / Clean Empty State */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+        <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-3 space-y-1.5">
           <p className="px-2 pt-1 pb-2 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
             Recent Conversations
           </p>
@@ -182,7 +182,7 @@ export default function ChatPage() {
                   key={conv.id}
                   type="button"
                   onClick={() => handleSelectConv(conv.id)}
-                  className={`w-full text-left p-3 rounded-[12px] border transition-all cursor-pointer ${
+                  className={`w-full text-left p-3 rounded-[12px] border transition-all duration-150 cursor-pointer ${
                     isActive
                       ? 'bg-white border-[#E8DCD1] shadow-xs'
                       : 'bg-transparent border-transparent hover:bg-white/70 hover:border-[#E8DCD1]/60'
@@ -191,7 +191,7 @@ export default function ChatPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <MessageSquare
-                        className={`w-4 h-4 shrink-0 ${
+                        className={`w-4 h-4 shrink-0 transition-colors ${
                           isActive ? 'text-[#96613F]' : 'text-[#77716B]'
                         }`}
                       />
@@ -220,7 +220,7 @@ export default function ChatPage() {
         {/* Header Bar */}
         <div className="p-4 sm:px-6 bg-white border-b border-[#E8DCD1] flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <h3 className="text-sm sm:text-base font-bold text-[#25211E] truncate">
+            <h3 className="text-sm sm:text-base font-bold text-[#25211E] tracking-tight truncate">
               {activeConvId
                 ? conversations.find((c) => c.id === activeConvId)?.title || 'Active Session'
                 : 'Infera AI Knowledge Playground'}
@@ -235,14 +235,14 @@ export default function ChatPage() {
         </div>
 
         {/* Messages Stream / Clean Empty State */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-[#FAF7F2]/30">
+        <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-4 sm:p-6 space-y-6 bg-[#FAF7F2]/30">
           {messages.length === 0 ? (
             /* Clean Center Welcome Banner (Zero fake messages) */
             <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-10">
               <div className="w-14 h-14 rounded-2xl bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shadow-sm mb-4">
                 <BookOpen className="w-7 h-7" />
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#25211E]">
+              <h3 className="text-base sm:text-lg font-bold text-[#25211E] tracking-tight">
                 Test Knowledge Base Retrieval
               </h3>
               <p className="text-xs text-[#77716B] mt-1.5 leading-relaxed">
@@ -281,7 +281,7 @@ export default function ChatPage() {
                             <div
                               key={i}
                               onClick={() => setActiveCitation(cite)}
-                              className="p-3 rounded-[10px] bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] transition-all cursor-pointer flex items-center justify-between gap-2"
+                              className="group p-3 rounded-[10px] bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-2xs cursor-pointer flex items-center justify-between gap-2"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <FileText className="w-4 h-4 text-[#96613F] shrink-0" />
@@ -294,7 +294,7 @@ export default function ChatPage() {
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-[11px] font-semibold text-[#96613F] shrink-0">
+                              <span className="text-[11px] font-semibold text-[#96613F] shrink-0 transition-transform duration-150 group-hover:translate-x-0.5">
                                 View Source →
                               </span>
                             </div>
@@ -311,7 +311,7 @@ export default function ChatPage() {
                         <button
                           type="button"
                           onClick={() => handleRating(msg.id, 'Helpful')}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
                             msg.userRating === 'Helpful'
                               ? 'text-[#2B6141] font-bold bg-[#EEF5F0]'
                               : 'hover:text-[#25211E]'
@@ -323,7 +323,7 @@ export default function ChatPage() {
                         <button
                           type="button"
                           onClick={() => handleRating(msg.id, 'Not Helpful')}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
                             msg.userRating === 'Not Helpful'
                               ? 'text-[#A83833] font-bold bg-[#FDF0EF]'
                               : 'hover:text-[#25211E]'
@@ -365,7 +365,7 @@ export default function ChatPage() {
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Ask a question about your organization's documents..."
-              className="flex-1 px-4 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[12px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-white focus:outline-none focus:border-[#96613F] transition-colors"
+              className="flex-1 px-4 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[12px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all duration-150"
             />
             <button
               type="submit"
@@ -387,6 +387,7 @@ export default function ChatPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-6 shadow-2xl relative"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">

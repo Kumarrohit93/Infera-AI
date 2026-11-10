@@ -138,13 +138,13 @@ export default function SettingsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-[10px] text-xs sm:text-sm font-semibold transition-all text-left ${
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-[10px] text-xs sm:text-sm font-semibold transition-all duration-150 text-left cursor-pointer ${
                   isActive
-                    ? 'bg-[#F3E8DC] text-[#4A3023] border border-[#E8DCD1] shadow-xs'
+                    ? 'bg-[#F3E8DC] text-[#4A3023] border border-[#E8DCD1] shadow-2xs'
                     : 'text-[#77716B] hover:bg-[#FAF7F2] hover:text-[#25211E]'
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#96613F]' : ''}`} />
+                <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[#96613F]' : ''}`} />
                 <span className="truncate">{tab.label}</span>
               </button>
             );
@@ -158,10 +158,11 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-8"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E]">Organization Profile</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Organization Profile</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Configure your company identity and verified email domain.
                 </p>
@@ -176,7 +177,7 @@ export default function SettingsPage() {
                     type="text"
                     value={orgData.name}
                     onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                   />
                 </div>
 
@@ -188,7 +189,7 @@ export default function SettingsPage() {
                     type="text"
                     value={orgData.domain}
                     onChange={(e) => setOrgData({ ...orgData, domain: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                   />
                 </div>
               </div>
@@ -216,7 +217,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => toast.success('Logo upload dialog opened.')}
-                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[8px] bg-white border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-colors shadow-xs shrink-0"
+                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[8px] bg-white border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-all duration-150 active:scale-95 shadow-xs shrink-0 cursor-pointer"
                   >
                     <Upload className="w-4 h-4 text-[#77716B]" />
                     <span>Upload New Logo</span>
@@ -229,7 +230,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('Organization settings saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Organization Settings</span>
@@ -243,10 +244,11 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-8"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E]">AI & Model Configuration</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">AI & Model Configuration</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Configure LLM provider, temperature, and vector retrieval parameters.
                 </p>
@@ -259,7 +261,7 @@ export default function SettingsPage() {
                   <select
                     value={aiData.provider}
                     onChange={(e) => setAiData({ ...aiData, provider: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all cursor-pointer"
                   >
                     <option value="OpenAI Enterprise">OpenAI Enterprise</option>
                     <option value="Anthropic Enterprise">Anthropic Enterprise</option>
@@ -272,7 +274,7 @@ export default function SettingsPage() {
                   <select
                     value={aiData.model}
                     onChange={(e) => setAiData({ ...aiData, model: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all cursor-pointer"
                   >
                     <option value="gpt-4o (128k Context)">gpt-4o (128k Context)</option>
                     <option value="gpt-4o-mini (128k Context)">gpt-4o-mini (128k Context)</option>
@@ -298,7 +300,7 @@ export default function SettingsPage() {
                   step="0.05"
                   value={aiData.temperature}
                   onChange={(e) => setAiData({ ...aiData, temperature: Number(e.target.value) })}
-                  className="w-full accent-[#96613F]"
+                  className="w-full accent-[#96613F] cursor-pointer"
                 />
                 <div className="flex justify-between text-[11px] text-[#77716B]">
                   <span>0.0 (Deterministic & Strict Citations)</span>
@@ -309,14 +311,14 @@ export default function SettingsPage() {
 
               {/* 3 Parameter Boxes */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1]">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] transition-all hover:border-[#96613F]/40">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
                     Top-K Retrieved Chunks
                   </p>
                   <select
                     value={aiData.topK}
                     onChange={(e) => setAiData({ ...aiData, topK: Number(e.target.value) })}
-                    className="mt-2 w-full bg-white border border-[#E8DCD1] rounded-[8px] p-1.5 text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F]"
+                    className="mt-2 w-full bg-white border border-[#E8DCD1] rounded-[8px] p-1.5 text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] cursor-pointer"
                   >
                     <option value={3}>Top 3 Chunks</option>
                     <option value={4}>Top 4 Chunks (Recommended)</option>
@@ -325,14 +327,14 @@ export default function SettingsPage() {
                   </select>
                 </div>
 
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1]">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] transition-all hover:border-[#96613F]/40">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
                     Chunk Size (Tokens)
                   </p>
                   <select
                     value={aiData.chunkSize}
                     onChange={(e) => setAiData({ ...aiData, chunkSize: Number(e.target.value) })}
-                    className="mt-2 w-full bg-white border border-[#E8DCD1] rounded-[8px] p-1.5 text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F]"
+                    className="mt-2 w-full bg-white border border-[#E8DCD1] rounded-[8px] p-1.5 text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] cursor-pointer"
                   >
                     <option value={500}>500 Tokens</option>
                     <option value={800}>800 Tokens (Default)</option>
@@ -340,7 +342,7 @@ export default function SettingsPage() {
                   </select>
                 </div>
 
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1]">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] transition-all hover:border-[#96613F]/40">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
                     Embedding Model
                   </p>
@@ -352,7 +354,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Strict Source Citations Toggle */}
-              <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4">
+              <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4 transition-all hover:border-[#96613F]/40">
                 <div>
                   <p className="text-xs font-bold text-[#25211E]">Enforce Strict Source Citations</p>
                   <p className="text-[11px] text-[#77716B] mt-0.5">
@@ -372,7 +374,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('AI & Model parameters saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save AI Configuration</span>
@@ -386,10 +388,11 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-6"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E]">Access & Permissions</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Access & Permissions</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Define default member capabilities and folder visibility policies.
                 </p>
@@ -397,7 +400,7 @@ export default function SettingsPage() {
 
               <div className="space-y-4 text-xs">
                 {/* 1 */}
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4 transition-all hover:border-[#96613F]/40">
                   <div>
                     <p className="font-bold text-[#25211E]">Allow Members to View Cited Source Excerpts</p>
                     <p className="text-[11px] text-[#77716B] mt-0.5">
@@ -413,7 +416,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 2 */}
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4 transition-all hover:border-[#96613F]/40">
                   <div>
                     <p className="font-bold text-[#25211E]">Allow Original PDF / DOCX File Downloads</p>
                     <p className="text-[11px] text-[#77716B] mt-0.5">
@@ -429,7 +432,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 3 */}
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4 transition-all hover:border-[#96613F]/40">
                   <div>
                     <p className="font-bold text-[#25211E]">Auto-Assign "General" Folder to New Invitations</p>
                     <p className="text-[11px] text-[#77716B] mt-0.5">
@@ -445,7 +448,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 4 */}
-                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4">
+                <div className="p-4 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-between gap-4 transition-all hover:border-[#96613F]/40">
                   <div>
                     <p className="font-bold text-[#25211E]">Enforce Multi-Factor Authentication (2FA) for Admins</p>
                     <p className="text-[11px] text-[#77716B] mt-0.5">
@@ -468,7 +471,7 @@ export default function SettingsPage() {
                   <select
                     value={permissions.defaultFolderAccess}
                     onChange={(e) => setPermissions({ ...permissions, defaultFolderAccess: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all cursor-pointer"
                   >
                     <option value="Restricted (Explicit Member Selection)">
                       Restricted (Explicit Member Selection)
@@ -483,7 +486,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('Access control policies saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Save Permissions</span>
@@ -497,10 +500,11 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-6"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E]">Connected Enterprise Integrations</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Connected Enterprise Integrations</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Sync external cloud repositories and pipe AI retrieval tools to messaging tools.
                 </p>
@@ -513,7 +517,7 @@ export default function SettingsPage() {
                   return (
                     <div
                       key={item.id}
-                      className="p-5 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex flex-col justify-between hover:border-[#96613F]/50 transition-colors"
+                      className="p-5 rounded-[12px] bg-[#FAF7F2] border border-[#E8DCD1] flex flex-col justify-between hover:border-[#96613F]/50 hover:-translate-y-0.5 hover:shadow-2xs transition-all duration-150"
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
@@ -542,7 +546,7 @@ export default function SettingsPage() {
                         <button
                           type="button"
                           onClick={() => toast.success(`${item.name} configuration clicked.`)}
-                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-colors ${item.actionStyle}`}
+                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
                         >
                           {item.actionText}
                         </button>
@@ -559,11 +563,12 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-8"
             >
               {/* Section 1: Admin Profile */}
               <div>
-                <h3 className="text-base font-bold text-[#25211E]">Admin Profile & Security</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Admin Profile & Security</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Update your administrator profile details, change password, or sign out.
                 </p>
@@ -575,7 +580,7 @@ export default function SettingsPage() {
                       type="text"
                       value={profileData.name}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
                   </div>
 
@@ -585,7 +590,7 @@ export default function SettingsPage() {
                       type="email"
                       value={profileData.email}
                       onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F]"
+                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
                   </div>
 
@@ -604,7 +609,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => handleSave('Admin profile updated.')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>Update Profile</span>
@@ -614,7 +619,7 @@ export default function SettingsPage() {
 
               {/* Section 2: Change Password */}
               <div className="pt-6 border-t border-[#F3E8DC]">
-                <h4 className="text-sm font-bold text-[#25211E]">Change Administrator Password</h4>
+                <h4 className="text-sm font-bold text-[#25211E] tracking-tight">Change Administrator Password</h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-xs">
                   <div>
@@ -624,7 +629,7 @@ export default function SettingsPage() {
                       value={profileData.currentPassword}
                       onChange={(e) => setProfileData({ ...profileData, currentPassword: e.target.value })}
                       placeholder="••••••••••••"
-                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F]"
+                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
                   </div>
 
@@ -635,7 +640,7 @@ export default function SettingsPage() {
                       value={profileData.newPassword}
                       onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })}
                       placeholder="Minimum 8 characters"
-                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F]"
+                      className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
                   </div>
                 </div>
@@ -651,7 +656,7 @@ export default function SettingsPage() {
                       handleSave('Administrator password updated successfully.');
                       setProfileData({ ...profileData, currentPassword: '', newPassword: '' });
                     }}
-                    className="px-4 py-2 rounded-[8px] bg-white hover:bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-colors"
+                    className="px-4 py-2 rounded-[8px] bg-white hover:bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-all duration-150 active:scale-95 cursor-pointer"
                   >
                     Update Password
                   </button>
@@ -661,7 +666,7 @@ export default function SettingsPage() {
               {/* Section 3: End Session / Logout */}
               <div className="pt-6 border-t border-[#F3E8DC] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-sm font-bold text-[#25211E]">End Administrator Session</h4>
+                  <h4 className="text-sm font-bold text-[#25211E] tracking-tight">End Administrator Session</h4>
                   <p className="text-xs text-[#77716B] mt-0.5">
                     Revoke current browser authentication and return to the login screen.
                   </p>
@@ -670,7 +675,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#FDF0EF] hover:bg-[#A83833] text-[#A83833] hover:text-white border border-[#F3C9C6] text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#FDF0EF] hover:bg-[#A83833] text-[#A83833] hover:text-white border border-[#F3C9C6] text-xs font-bold transition-all duration-150 active:scale-95 shadow-xs shrink-0 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Logout of Admin Panel</span>
