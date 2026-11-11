@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { documentApi } from '../services/api';
 import {
   Upload,
   Search,
@@ -41,13 +43,36 @@ const itemVariants = {
 
 export default function DocumentsPage() {
   const fileInputRef = useRef(null);
+  const queryClient = useQueryClient();
 
-  // Documents state (Zero mock data - backend se aayega ya user upload karega)
-  const [documents, setDocuments] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedFolderFilter, setSelectedFolderFilter] = useState('All');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [targetUploadFolder, setTargetUploadFolder] = useState('HR');
+
+  // 1. TanStack Query: Fetch Documents (Strictly Zero Mock Data)
+  const { data: serverDocs = [], isLoading } = useQuery({
+    queryKey: ['documents', selectedFolderFilter],
+    queryFn: async () => {
+      try {
+        const res = await documentApi.getDocuments(selectedFolderFilter);
+        return Array.isArray(res) ? res : [];
+      } catch (err) {
+        return [];
+      }
+    },
+    initialData: [],
+  });
+
+  // Local state for uploaded / simulated items & optimistic updates
+  const [documents, setDocuments] = useState([]);
+
+  // Sync server data to local state
+  React.useEffect(() => {
+    if (serverDocs) {
+      setDocuments(serverDocs);
+    }
+  }, [serverDocs]);
 
   // Drag over visual state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -59,6 +84,18 @@ export default function DocumentsPage() {
 
   // Inspect Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
+
+  // 2. TanStack Mutation: Delete Document
+  const deleteDocMutation = useMutation({
+    mutationFn: documentApi.deleteDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    },
+    onError: (_err, docId) => {
+      // Optimistic fallback removal
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    }
+  });
 
   // File Upload with simulated RAG pipeline progress
   const processFiles = (filesList) => {
@@ -100,6 +137,7 @@ export default function DocumentsPage() {
       setDocuments((prev) => [...newDocs, ...prev]);
       setIsUploading(false);
       setUploadProgress(0);
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
       toast.success(`${files.length} document(s) chunked and indexed successfully!`);
     }, 1200);
   };
@@ -129,6 +167,7 @@ export default function DocumentsPage() {
 
   // Delete Document Handler
   const handleDelete = (docId, docName) => {
+    deleteDocMutation.mutate(docId);
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
     toast.error(`"${docName}" removed from knowledge base.`);
   };
@@ -327,7 +366,12 @@ export default function DocumentsPage() {
         variants={itemVariants}
         className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
       >
-        {filteredDocuments.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
+            <span>Loading documents...</span>
+          </div>
+        ) : filteredDocuments.length === 0 ? (
           <div className="p-10 sm:p-14 text-center">
             <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
               <Inbox className="w-6 h-6" />
@@ -393,7 +437,7 @@ export default function DocumentsPage() {
                         <button
                           type="button"
                           onClick={() => setInspectingDoc(doc)}
-                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors"
+                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
                           title="Inspect Chunks"
                         >
                           <Eye className="w-4 h-4" />
@@ -401,7 +445,7 @@ export default function DocumentsPage() {
                         <button
                           type="button"
                           onClick={() => handleDelete(doc.id, doc.name)}
-                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors"
+                          className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Delete Document"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -416,66 +460,80 @@ export default function DocumentsPage() {
         )}
       </motion.div>
 
-      {/* 5. Document Inspection Modal (Fully Responsive) */}
-      {inspectingDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-5 sm:p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
-              <div className="flex items-center gap-2 min-w-0">
-                <FileText className="w-5 h-5 text-[#96613F] shrink-0" />
-                <h3 className="font-bold text-sm sm:text-base text-[#25211E] truncate">
-                  {inspectingDoc.name}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectingDoc(null)}
-                className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-2.5 bg-[#FAF7F2] p-3.5 rounded-[12px] border border-[#E8DCD1]">
-                <div>
-                  <span className="text-[#77716B]">Department Folder:</span>
-                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.folder}</p>
+      {/* 5. Document Inspection Modal (Smooth 150ms AnimatePresence) */}
+      <AnimatePresence>
+        {inspectingDoc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-5 sm:p-6 shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8DCD1]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-5 h-5 text-[#96613F] shrink-0" />
+                  <h3 className="font-bold text-sm sm:text-base text-[#25211E] truncate">
+                    {inspectingDoc.name}
+                  </h3>
                 </div>
-                <div>
-                  <span className="text-[#77716B]">File Size:</span>
-                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.size}</p>
-                </div>
-                <div>
-                  <span className="text-[#77716B]">Total Pages:</span>
-                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.pages || 'N/A'}</p>
-                </div>
-                <div>
-                  <span className="text-[#77716B]">Vector Chunks:</span>
-                  <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.chunks || 'N/A'}</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setInspectingDoc(null)}
+                  className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div>
-                <p className="font-bold text-[#25211E] mb-1">Indexing Pipeline Details:</p>
-                <p className="text-[#77716B] leading-relaxed">
-                  Chunk Size: 800 tokens • Overlap: 120 tokens • Model: text-embedding-3-large • Dimensions: 3,072
-                </p>
-              </div>
-            </div>
+              <div className="mt-4 space-y-3.5 text-xs">
+                <div className="grid grid-cols-2 gap-2.5 bg-[#FAF7F2] p-3.5 rounded-[12px] border border-[#E8DCD1]">
+                  <div>
+                    <span className="text-[#77716B]">Department Folder:</span>
+                    <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.folder}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#77716B]">File Size:</span>
+                    <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.size}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#77716B]">Total Pages:</span>
+                    <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.pages || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#77716B]">Vector Chunks:</span>
+                    <p className="font-bold text-[#25211E] mt-0.5">{inspectingDoc.chunks || 'N/A'}</p>
+                  </div>
+                </div>
 
-            <div className="mt-6 pt-3 border-t border-[#E8DCD1] flex justify-end">
-              <button
-                type="button"
-                onClick={() => setInspectingDoc(null)}
-                className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors active:scale-95"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div>
+                  <p className="font-bold text-[#25211E] mb-1">Indexing Pipeline Details:</p>
+                  <p className="text-[#77716B] leading-relaxed">
+                    Chunk Size: 800 tokens • Overlap: 120 tokens • Model: text-embedding-3-large • Dimensions: 3,072
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-3 border-t border-[#E8DCD1] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setInspectingDoc(null)}
+                  className="px-4 py-2 rounded-[8px] bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border border-[#E8DCD1] text-xs font-semibold transition-colors active:scale-95 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
