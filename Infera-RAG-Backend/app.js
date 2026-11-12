@@ -2,6 +2,8 @@ const express = require("express");
 require("dotenv").config();
 
 const pool = require("./Config/db");
+const documentRoutes = require("./routes/document.routes");
+const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -25,6 +27,11 @@ app.get("/health", async (req, res) => {
         });
     }
 });
+
+app.use("/api/documents", documentRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(process.env.PORT || 5001, () => {
     console.log("RAG Backend running");
