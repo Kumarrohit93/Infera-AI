@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { feedbackApi } from '../services/api';
 import {
   ThumbsUp,
   ThumbsDown,
@@ -12,7 +14,8 @@ import {
   Inbox,
   X,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 
@@ -38,21 +41,33 @@ const itemVariants = {
 };
 
 export default function FeedbackPage() {
-  // Zero mock data - empty array by default (backend se aayega)
-  const [feedbacks] = useState([]);
+  // TanStack Query: ZERO MOCK DATA - Empty array by default (backend se aayega)
+  const { data: feedbacks = [], isLoading } = useQuery({
+    queryKey: ['feedback'],
+    queryFn: async () => {
+      try {
+        const res = await feedbackApi.getFeedback();
+        return Array.isArray(res) ? res : [];
+      } catch (err) {
+        return [];
+      }
+    },
+    initialData: [], // Bilkul empty array, zero mock data
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [ratingFilter, setRatingFilter] = useState('All');
 
   // Inspect Modal State
   const [inspectingFeedback, setInspectingFeedback] = useState(null);
 
-  // Calculations
+  // Calculations (Exact aapke original code jaisa)
   const totalCount = feedbacks.length;
   const helpfulCount = feedbacks.filter((f) => f.rating === 'Helpful').length;
   const unhelpfulCount = feedbacks.filter((f) => f.rating === 'Not Helpful').length;
   const helpfulPercentage = totalCount > 0 ? Math.round((helpfulCount / totalCount) * 100) : 0;
 
-  // Search & Filter
+  // Search & Filter (Exact aapke original code jaisa)
   const filteredFeedbacks = feedbacks.filter((item) => {
     const matchesSearch =
       (item.question && item.question.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -176,7 +191,12 @@ export default function FeedbackPage() {
         variants={itemVariants}
         className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
       >
-        {filteredFeedbacks.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
+            <span>Loading answer feedback logs...</span>
+          </div>
+        ) : filteredFeedbacks.length === 0 ? (
           <div className="p-10 sm:p-14 text-center">
             <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
               <Inbox className="w-6 h-6" />

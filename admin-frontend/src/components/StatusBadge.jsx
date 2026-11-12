@@ -8,7 +8,7 @@ import {
   UserCheck
 } from 'lucide-react';
 
-export default function StatusBadge({ status, size = 'sm' }) {
+export default function StatusBadge({ status, size = 'sm', animate = true }) {
   const normalized = (status || '').toLowerCase();
 
   // Status mapping: background, text, border aur matching icon
@@ -97,7 +97,7 @@ export default function StatusBadge({ status, size = 'sm' }) {
     >
       {IconComponent && (
         <IconComponent
-          className={`w-3.5 h-3.5 shrink-0 ${current.spin ? 'animate-spin' : ''}`}
+          className={`w-3.5 h-3.5 shrink-0 ${current.spin && animate ? 'animate-spin' : ''}`}
         />
       )}
       <span>{status}</span>
