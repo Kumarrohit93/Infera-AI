@@ -262,7 +262,7 @@ export default function DashboardPage() {
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] bg-white hover:bg-[#FAF7F2] text-[#25211E] border border-[#E8DCD1] hover:border-[#96613F]/50 text-xs sm:text-sm font-medium transition-all duration-200 active:scale-95 shadow-xs cursor-pointer"
               >
                 <MessageSquareText className="w-4 h-4 text-[#96613F]" />
-                <span>Open AI Chat</span>
+                <span>Test AI</span>
               </button>
             </div>
           </div>

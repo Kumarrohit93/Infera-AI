@@ -18,7 +18,7 @@ const PAGE_META = {
   '/documents': { title: 'Documents', subtitle: 'Upload and manage organization documents' },
   '/folders': { title: 'Folders', subtitle: 'Departmental collections & access permissions' },
   '/members': { title: 'Team Members', subtitle: 'Manage user roles and invitations' },
-  '/chat': { title: 'AI Chat', subtitle: 'Test citation accuracy & grounded retrieval' },
+  '/chat': { title: 'Test AI', subtitle: 'Test citation accuracy & grounded retrieval' },
   '/feedback': { title: 'Feedback', subtitle: 'Monitor ratings and answer quality' },
   '/settings': { title: 'Settings', subtitle: 'Configure organization, models & security' }
 };
