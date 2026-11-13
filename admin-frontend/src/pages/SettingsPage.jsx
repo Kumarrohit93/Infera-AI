@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
   Cpu,
@@ -15,7 +16,8 @@ import {
   Sparkles,
   Lock,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +32,7 @@ const TABS = [
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('organization');
 
   // Tab 1: Organization State
@@ -103,9 +106,20 @@ export default function SettingsPage() {
     newPassword: ''
   });
 
-  // Action Handlers
+  // TanStack Mutation for saving settings
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (message) => {
+      // In real backend, this will call PATCH /api/organizations/current
+      return message;
+    },
+    onSuccess: (message) => {
+      queryClient.invalidateQueries({ queryKey: ['organization'] });
+      toast.success(message);
+    }
+  });
+
   const handleSave = (message) => {
-    toast.success(message);
+    saveSettingsMutation.mutate(message);
   };
 
   const handleLogout = () => {
@@ -230,9 +244,14 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('Organization settings saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+                  disabled={saveSettingsMutation.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Save className="w-4 h-4" />
+                  {saveSettingsMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>Save Organization Settings</span>
                 </button>
               </div>
@@ -374,9 +393,14 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('AI & Model parameters saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+                  disabled={saveSettingsMutation.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Save className="w-4 h-4" />
+                  {saveSettingsMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>Save AI Configuration</span>
                 </button>
               </div>
@@ -486,9 +510,14 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleSave('Access control policies saved.')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+                  disabled={saveSettingsMutation.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  <Save className="w-4 h-4" />
+                  {saveSettingsMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>Save Permissions</span>
                 </button>
               </div>
