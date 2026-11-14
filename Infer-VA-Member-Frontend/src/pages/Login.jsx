@@ -1,7 +1,9 @@
-
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -10,177 +12,190 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Backend API integration will be added later.
-    console.log({
-      email,
-      password,
-      remember,
-    });
+    // Temporary frontend navigation
+    // Authentication API will be connected later
+    navigate("/dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-[#F4EDE0] flex items-center justify-center md:p-6">
+    <div className="min-h-dvh w-full bg-[#F8F4E7] lg:h-dvh lg:min-h-0 lg:overflow-hidden">
 
-      <div className="w-full max-w-[1450px] min-h-screen md:min-h-[850px] grid grid-cols-1 lg:grid-cols-2 overflow-hidden md:rounded-[28px] md:shadow-2xl">
+      <div className="grid min-h-dvh w-full grid-cols-1
+        lg:h-full lg:min-h-0 lg:grid-cols-[45%_55%]">
 
-        {/* LEFT BRANDING SECTION */}
+        {/* LEFT BRANDING SECTION (Hidden on mobile/tablet, visible on laptop lg+) */}
+        <section className="relative hidden lg:flex min-h-[620px] flex-col
+          justify-between overflow-hidden bg-[#722F37]
+          px-7 py-8 text-white
+          sm:px-12 lg:min-h-0 lg:px-9 lg:py-7
+          xl:px-14 xl:py-9">
 
-        <section className="relative bg-[#14213D] text-white px-8 py-10 md:px-14 md:py-12 flex flex-col justify-between overflow-hidden min-h-[550px]">
+          {/* Background Shapes */}
+          <div className="absolute -right-20 -top-24
+            h-72 w-72 rounded-full bg-[#D7A781]/20 blur-3xl" />
 
-          {/* Background decoration */}
-          <div className="absolute -top-24 -right-20 w-72 h-72 bg-[#F5B69E]/20 rounded-full blur-3xl" />
-
-          <div className="absolute -bottom-32 -left-20 w-80 h-80 bg-[#F5B69E]/10 rounded-full" />
+          <div className="absolute -bottom-32 -left-20
+            h-80 w-80 rounded-full bg-[#D7A781]/10" />
 
           {/* Logo */}
           <div className="relative z-10 flex items-center gap-4">
-
-            <div className="w-16 h-16 bg-white rounded-xl p-2 flex items-center justify-center">
+            <div className="flex h-14 w-14 shrink-0
+              items-center justify-center rounded-xl bg-white p-2">
               <img
                 src="/infera-logo.jpeg"
                 alt="Infera AI Logo"
-                className="w-full h-full object-contain"
+                className="h-full w-full object-contain"
               />
             </div>
 
             <div>
-              <h1 className="text-3xl font-bold">
-                Infera <span className="text-[#F5B69E]">AI</span>
+              <h1 className="text-2xl font-bold sm:text-3xl">
+                Infera <span className="text-[#D7A781]">AI</span>
               </h1>
-
               <p className="text-sm text-white/70">
                 Chat with Your Documents
               </p>
             </div>
-
           </div>
 
-          {/* Main content */}
-          <div className="relative z-10 my-12">
-
-            <p className="text-[#F5B69E] uppercase tracking-[4px] text-xs font-semibold mb-5">
+          {/* Main Content */}
+          <div className="relative z-10 my-8 lg:my-3">
+            <p className="mb-5 text-xs font-semibold uppercase
+              tracking-[3px] text-[#D7A781] sm:tracking-[4px]">
               Your Knowledge Workspace
             </p>
 
-            <h2 className="text-4xl md:text-5xl xl:text-6xl font-bold leading-tight">
+            <h2 className="text-4xl font-bold leading-tight
+              sm:text-5xl xl:text-6xl">
               Your Knowledge.
               <br />
-              Powered by <span className="text-[#F5B69E]">AI.</span>
+              Powered by <span className="text-[#D7A781]">AI.</span>
             </h2>
 
-            <div className="w-28 h-1.5 bg-[#F5B69E] rounded-full mt-8 mb-7" />
+            <div className="mb-6 mt-7 h-1.5 w-28
+              rounded-full bg-[#D7A781]" />
 
-            <p className="text-lg text-white/75 leading-relaxed">
+            <p className="text-base leading-relaxed text-white/75 sm:text-lg">
               Ask. Explore. Get Answers —
               <br />
               from your documents.
             </p>
-
           </div>
 
           {/* Illustration */}
-          <div className="relative z-10 flex items-center justify-center gap-8 pb-8">
+          <div className="relative z-10 flex items-center
+            justify-center gap-6 pb-5 sm:gap-10 lg:gap-5">
 
-            {/* Document card */}
-            <div className="relative w-36 h-44">
-
-              <div className="absolute left-0 top-5 rotate-[-12deg] w-28 h-36 bg-[#F4EDE0] rounded-2xl p-4 shadow-xl">
-
-                <div className="bg-[#F5B69E] text-[#14213D] font-bold text-center rounded-lg py-3 mt-4">
+            {/* Documents */}
+            <div className="relative h-36 w-32 sm:h-40 sm:w-36">
+              <div className="absolute left-0 top-5 h-32 w-24
+                rotate-[-12deg] rounded-2xl bg-[#F8F4E7]
+                p-3 shadow-xl sm:h-36 sm:w-28 sm:p-4">
+                <div className="mt-4 rounded-lg bg-[#D7A781]
+                  py-3 text-center font-bold text-[#722F37]">
                   PDF
                 </div>
-
-                <div className="h-2 bg-[#D9C8B8] rounded mt-5" />
-                <div className="h-2 bg-[#D9C8B8] rounded mt-3 w-3/4" />
-
+                <div className="mt-5 h-2 rounded bg-[#D9C8B8]" />
+                <div className="mt-3 h-2 w-3/4 rounded bg-[#D9C8B8]" />
               </div>
 
-              <div className="absolute right-0 top-0 rotate-[8deg] w-28 h-40 bg-white rounded-2xl p-4 shadow-xl">
-
-                <div className="bg-[#4267A9] text-white font-bold text-center rounded-lg py-3 mt-4">
+              <div className="absolute right-0 top-0 h-36 w-24
+                rotate-[8deg] rounded-2xl bg-white p-3 shadow-xl
+                sm:h-40 sm:w-28 sm:p-4">
+                <div className="mt-4 rounded-lg bg-[#722F37]
+                  py-3 text-center font-bold text-white">
                   DOC
                 </div>
-
-                <div className="h-2 bg-[#D9C8B8] rounded mt-5" />
-                <div className="h-2 bg-[#D9C8B8] rounded mt-3 w-3/4" />
-
+                <div className="mt-5 h-2 rounded bg-[#D9C8B8]" />
+                <div className="mt-3 h-2 w-3/4 rounded bg-[#D9C8B8]" />
               </div>
-
             </div>
 
-            {/* AI assistant */}
-            <div className="flex flex-col items-center relative">
-
-              <div className="absolute -top-12 right-0 bg-[#F4EDE0] text-[#14213D] rounded-xl px-5 py-3 shadow-lg">
+            {/* AI Assistant */}
+            <div className="relative flex flex-col items-center">
+              <div className="absolute -right-2 -top-11
+                rounded-xl bg-[#F8F4E7] px-5 py-3
+                text-[#722F37] shadow-lg">
                 <span className="text-xl tracking-widest">•••</span>
               </div>
 
-              <div className="w-32 h-28 md:w-40 md:h-36 rounded-[42%] bg-[#F4EDE0] border-[7px] border-[#F5B69E] flex flex-col items-center justify-center shadow-xl">
-
-                <div className="flex gap-6 mb-3">
-                  <span className="w-3 h-3 bg-[#14213D] rounded-full" />
-                  <span className="w-3 h-3 bg-[#14213D] rounded-full" />
+              <div className="flex h-28 w-32 flex-col items-center
+                justify-center rounded-[42%] border-[7px]
+                border-[#D7A781] bg-[#F8F4E7] shadow-xl
+                sm:h-32 sm:w-36">
+                <div className="mb-3 flex gap-6">
+                  <span className="h-3 w-3 rounded-full bg-[#722F37]" />
+                  <span className="h-3 w-3 rounded-full bg-[#722F37]" />
                 </div>
-
-                <div className="w-12 h-1.5 bg-[#F5B69E] rounded-full" />
-
-                <span className="text-[#14213D] font-bold text-xs mt-2">
+                <div className="h-1.5 w-12 rounded-full bg-[#D7A781]" />
+                <span className="mt-2 text-xs font-bold text-[#722F37]">
                   AI
                 </span>
-
               </div>
 
-              <div className="w-36 h-6 bg-[#F5B69E] rounded-t-full mt-2" />
-
+              <div className="mt-2 h-6 w-32 rounded-t-full bg-[#D7A781]" />
             </div>
 
           </div>
 
-          <p className="relative z-10 text-xs text-white/40">
+          {/* Copyright */}
+          <p className="relative z-10 text-xs text-white/50">
             © 2026 Infera AI. All rights reserved.
           </p>
 
         </section>
 
-        {/* RIGHT LOGIN SECTION */}
+        {/* RIGHT LOGIN SECTION (Full width on mobile, 55% on laptop) */}
+        <section className="relative flex min-h-[100dvh] lg:min-h-[650px]
+          items-center justify-center overflow-hidden
+          bg-[#F8F4E7] px-5 py-10
+          sm:px-10 lg:min-h-0 lg:h-full lg:px-8 lg:py-6
+          xl:px-14">
 
-        <section className="relative bg-[#F4EDE0] flex items-center justify-center px-5 py-12 md:px-10 lg:px-14">
+          {/* Background Shapes */}
+          <div className="absolute right-0 top-0
+            h-40 w-40 rounded-bl-full bg-[#D7A781]/30" />
 
-          <div className="absolute top-0 right-0 w-40 h-40 bg-[#F5B69E]/30 rounded-bl-full" />
+          <div className="absolute bottom-0 left-0
+            h-36 w-36 rounded-tr-full bg-[#D7A781]/20" />
 
-          <div className="absolute bottom-0 left-0 w-36 h-36 bg-[#F5B69E]/20 rounded-tr-full" />
-
-          {/* Login card */}
-          <div className="relative z-10 w-full max-w-[530px] bg-white/90 border border-white rounded-[28px] shadow-xl px-6 py-10 sm:px-10 md:px-12">
+          {/* Login Card */}
+          <div className="relative z-10 w-full max-w-[530px]
+            rounded-[28px] border border-white bg-white/90
+            px-6 py-8 shadow-xl
+            sm:px-10 sm:py-9 xl:px-12">
 
             {/* Heading */}
-            <div className="text-center mb-9">
-
-              <h2 className="text-4xl md:text-5xl font-bold text-[#14213D]">
-                Member <span className="text-[#F5B69E]">Login</span>
+            <div className="mb-7 text-center">
+              <h2 className="text-4xl font-bold text-[#722F37]
+                sm:text-5xl">
+                Member <span className="text-[#D7A781]">Login</span>
               </h2>
 
-              <p className="text-gray-600 mt-3">
+              <p className="mt-2 text-sm text-gray-600 sm:text-base">
                 Access your organisation's knowledge base
               </p>
 
-              <div className="w-24 h-1.5 bg-[#F5B69E] rounded-full mx-auto mt-6" />
-
+              <div className="mx-auto mt-5 h-1.5 w-24
+                rounded-full bg-[#D7A781]" />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
 
               {/* Email */}
               <div>
-
-                <label className="block text-sm font-semibold text-[#14213D] mb-2">
+                <label className="mb-2 block text-sm font-semibold
+                  text-[#722F37]">
                   Email Address
                 </label>
 
-                <div className="flex items-center border-2 border-gray-200 rounded-xl px-4 h-14 focus-within:border-[#F5B69E] transition">
-
-                  <span className="text-xl text-[#14213D]">✉</span>
+                <div className="flex h-14 items-center rounded-xl
+                  border-2 border-gray-200 px-4 transition
+                  focus-within:border-[#D7A781]">
+                  <span className="text-xl text-[#722F37]">
+                    ✉
+                  </span>
 
                   <input
                     type="email"
@@ -188,23 +203,24 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full h-full outline-none bg-transparent px-4 text-[#14213D] placeholder:text-gray-400"
+                    className="h-full w-full bg-transparent
+                      px-4 text-sm text-[#722F37] outline-none
+                      placeholder:text-gray-400"
                   />
-
                 </div>
-
               </div>
 
               {/* Password */}
               <div>
-
-                <label className="block text-sm font-semibold text-[#14213D] mb-2">
+                <label className="mb-2 block text-sm font-semibold
+                  text-[#722F37]">
                   Password
                 </label>
 
-                <div className="flex items-center border-2 border-gray-200 rounded-xl px-4 h-14 focus-within:border-[#F5B69E] transition">
-
-                  <span className="text-xl text-[#14213D]">🔒</span>
+                <div className="flex h-14 items-center rounded-xl
+                  border-2 border-gray-200 px-4 transition
+                  focus-within:border-[#D7A781]">
+                  <span className="text-lg">🔒</span>
 
                   <input
                     type={showPassword ? "text" : "password"}
@@ -212,50 +228,52 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-full outline-none bg-transparent px-4 text-[#14213D] placeholder:text-gray-400"
+                    className="h-full w-full bg-transparent
+                      px-4 text-sm text-[#722F37] outline-none
+                      placeholder:text-gray-400"
                   />
 
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-500 hover:text-[#14213D] text-sm font-medium"
+                    className="text-sm font-medium text-gray-500
+                      hover:text-[#722F37]"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
-
                 </div>
-
               </div>
 
-              {/* Remember me and Forgot Password */}
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-
-                <label className="flex items-center gap-2 text-[#14213D] cursor-pointer">
-
+              {/* Remember Me */}
+              <div className="flex flex-wrap items-center
+                justify-between gap-3 text-sm">
+                <label className="flex cursor-pointer
+                  items-center gap-2 text-[#722F37]">
                   <input
                     type="checkbox"
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
-                    className="w-4 h-4 accent-[#14213D]"
+                    className="h-4 w-4 accent-[#722F37]"
                   />
-
                   Remember me
-
                 </label>
 
                 <button
                   type="button"
-                  className="font-semibold text-[#14213D] hover:text-[#F5B69E]"
+                  className="font-semibold text-[#722F37]
+                    hover:text-[#D7A781]"
                 >
                   Forgot Password?
                 </button>
-
               </div>
 
-              {/* Login button */}
+              {/* Login Button */}
               <button
                 type="submit"
-                className="w-full h-14 rounded-xl bg-[#14213D] hover:bg-[#20375F] text-white text-lg font-semibold shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className="h-14 w-full rounded-xl bg-[#722F37]
+                  text-base font-semibold text-white shadow-lg
+                  transition-all duration-300
+                  hover:-translate-y-1 hover:bg-[#5B242C]"
               >
                 Login →
               </button>
@@ -263,29 +281,24 @@ export default function Login() {
             </form>
 
             {/* Divider */}
-            <div className="flex items-center gap-4 my-7">
-
-              <div className="flex-1 h-px bg-gray-200" />
-
-              <span className="text-gray-500 text-sm">
+            <div className="my-6 flex items-center gap-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-sm text-gray-500">
                 Member Access
               </span>
-
-              <div className="flex-1 h-px bg-gray-200" />
-
+              <div className="h-px flex-1 bg-gray-200" />
             </div>
 
-            {/* Contact admin */}
-            <p className="text-center text-gray-500 text-sm">
+            {/* Contact Admin */}
+            <p className="text-center text-sm text-gray-500">
               Need help accessing your account?{" "}
-
               <button
                 type="button"
-                className="font-semibold text-[#14213D] hover:text-[#F5B69E]"
+                className="font-semibold text-[#722F37]
+                  hover:text-[#D7A781]"
               >
                 Contact Admin
               </button>
-
             </p>
 
           </div>
