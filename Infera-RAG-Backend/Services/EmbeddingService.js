@@ -1,17 +1,31 @@
-// This file generates embeddings for document chunks using Gemini API.
 
 const { GoogleGenAI } = require("@google/genai");
 
+// Connect to Gemini using the API key from .env.
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
 });
 
 const MODEL_NAME = "gemini-embedding-001";
+
 const EMBEDDING_DIMENSION = Number(
-    process.env.EMBEDDING_DIMENSION || 3072
+    process.env.EMBEDDING_DIMENSION || 1536
 );
 
-// Generate an embedding for one text.
+// Normalize the embedding vector to unit length.
+const normalizeEmbedding = (embedding) => {
+    const magnitude = Math.sqrt(
+        embedding.reduce((sum, value) => sum + value * value, 0)
+    );
+
+    if (magnitude === 0) {
+        throw new Error("Cannot normalize a zero embedding");
+    }
+
+    return embedding.map((value) => value / magnitude);
+};
+
+// Generate a normalized embedding for the given text.
 const generateEmbedding = async (
     text,
     taskType = "RETRIEVAL_DOCUMENT"
@@ -30,7 +44,13 @@ const generateEmbedding = async (
             },
         });
 
-        return response.embeddings[0].values;
+        const embedding = response.embeddings[0].values;
+
+        if (embedding.length !== EMBEDDING_DIMENSION) {
+            throw new Error("Unexpected embedding dimensions");
+        }
+
+        return normalizeEmbedding(embedding);
     } catch (error) {
         throw new Error(`Gemini Embedding Error: ${error.message}`);
     }
