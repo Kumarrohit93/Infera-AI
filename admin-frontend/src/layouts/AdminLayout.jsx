@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, Navigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
@@ -20,7 +21,7 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#FAF7F2] text-[#25211E] flex">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-[#FAF7F2] text-[#25211E] flex">
       {/* 1. Desktop Sidebar (Always Full Height from Top to Bottom) */}
       <div className="hidden lg:flex h-full shrink-0">
         <Sidebar
@@ -30,32 +31,50 @@ export default function AdminLayout({ children }) {
         />
       </div>
 
-      {/* 2. Mobile Drawer */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-[#25211E]/50 backdrop-blur-sm transition-opacity duration-200"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl animate-in slide-in-from-left duration-200 ease-out">
-            <Sidebar
-              collapsed={false}
-              setCollapsed={() => setMobileSidebarOpen(false)}
-              onCloseMobile={() => setMobileSidebarOpen(false)}
-              onLogout={() => {
-                setMobileSidebarOpen(false);
-                handleLogout();
-              }}
+      {/* 2. Mobile / Tablet Drawer (GPU-composited 60fps slide) */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.div
+            key="mobile-drawer-root"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 lg:hidden flex"
+          >
+            <div
+              className="fixed inset-0 bg-[#25211E]/45"
+              onClick={() => setMobileSidebarOpen(false)}
             />
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 w-64 max-w-[85vw] h-full shadow-2xl will-change-transform"
+            >
+              <Sidebar
+                collapsed={false}
+                setCollapsed={() => setMobileSidebarOpen(false)}
+                onCloseMobile={() => setMobileSidebarOpen(false)}
+                onLogout={() => {
+                  setMobileSidebarOpen(false);
+                  handleLogout();
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 3. Right Area (Navbar Fixed at Top, Only Content Area Scrolls) */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Fixed Navbar */}
         <div className="shrink-0 z-10">
-          <Navbar onOpenMobileSidebar={() => setMobileSidebarOpen(true)} />
+          <Navbar
+            onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+            onLogout={handleLogout}
+          />
         </div>
 
         {/* Scrollable Main Content */}

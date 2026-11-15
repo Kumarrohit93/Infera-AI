@@ -7,6 +7,7 @@ import AdminLayout from './layouts/AdminLayout';
 import DashboardPage from './pages/DashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
 import FoldersPage from './pages/FoldersPage';
+import AddMemberPage from './pages/AddMemberPage';
 import TeamMembersPage from './pages/TeamMembersPage';
 import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/folders" element={<FoldersPage />} />
+            <Route path="/add-member" element={<AddMemberPage />} />
             <Route path="/members" element={<TeamMembersPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />

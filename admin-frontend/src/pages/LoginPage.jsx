@@ -17,6 +17,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+// Auth service (Infera-Backend). Override with VITE_AUTH_URL in admin-frontend/.env
+const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:3000/api';
+
 export default function LoginPage() {
   const navigate = useNavigate();
 
@@ -33,44 +36,56 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
 
-  // Strict Admin Login validation
-  const handleLogin = (e) => {
+  // Admin login: real API call to POST /api/auth/login
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
 
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!trimmedEmail || !password) {
       toast.error('Please enter both email and password.');
       return;
     }
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await fetch(`${AUTH_API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmedEmail, password }),
+      });
 
-      if (trimmedEmail === 'admin@infera.ai' && trimmedPassword === 'admin123') {
-        localStorage.setItem('isAdminAuth', 'true');
-        toast.success('Admin login successful!');
-        navigate('/dashboard');
-      } else {
-        toast.error('Invalid credentials. Only authorized administrators can sign in.');
+      const json = await response.json();
+
+      if (!response.ok) {
+        toast.error(json?.error?.message || 'Login failed. Please try again.');
+        return;
       }
-    }, 700);
+
+      const { accessToken, user } = json.data;
+
+      if (user.role !== 'admin') {
+        toast.error('Only administrators can sign in to the admin panel.');
+        return;
+      }
+
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('isAdminAuth', 'true');
+      toast.success('Admin login successful!');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error('Cannot reach the server. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Google Workspace SSO handler
+  // Google Workspace SSO handler (coming soon)
   const handleGoogleSSO = () => {
-    setIsSsoLoading(true);
-    toast.loading('Connecting to Google Workspace SSO...', { id: 'sso-toast' });
-    setTimeout(() => {
-      setIsSsoLoading(false);
-      toast.dismiss('sso-toast');
-      localStorage.setItem('isAdminAuth', 'true');
-      toast.success('SSO authentication verified!');
-      navigate('/dashboard');
-    }, 1200);
+    toast('Google sign-in is coming soon. Please use your email and password.', {
+      icon: 'ℹ️',
+    });
   };
 
   // Forgot password submit
