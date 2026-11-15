@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const pool = require("./Config/db");
 const documentRoutes = require("./routes/document.routes");
+const folderRoutes = require("./routes/folder.routes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -37,6 +38,7 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/api/documents", documentRoutes);
+app.use("/api/folders", folderRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
