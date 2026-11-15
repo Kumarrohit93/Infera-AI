@@ -223,7 +223,7 @@ export default function ChatPage() {
             <h3 className="text-sm sm:text-base font-bold text-[#25211E] tracking-tight truncate">
               {activeConvId
                 ? conversations.find((c) => c.id === activeConvId)?.title || 'Active Session'
-                : 'Infera AI Knowledge Playground'}
+                : 'Test AI'}
             </h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#F3E8DC] text-[#4A3023] border border-[#E8DCD1] shrink-0">
               Scope: {retrievalScope.split(' ')[0]}

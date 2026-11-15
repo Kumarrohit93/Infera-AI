@@ -96,7 +96,30 @@ export const folderApi = {
 };
 
 // ==========================================
-// 3. Team Members API (Documentation Chapter 5.4)
+// 3. Organization Employees API (Add Member Directory)
+// ==========================================
+export const employeeApi = {
+  // GET /api/employees
+  getEmployees: async () => {
+    return request('/employees');
+  },
+
+  // POST /api/employees
+  createEmployee: async (employeeData) => {
+    return request('/employees', {
+      method: 'POST',
+      body: JSON.stringify(employeeData),
+    });
+  },
+
+  // DELETE /api/employees/:id
+  deleteEmployee: async (id) => {
+    return request(`/employees/${id}`, { method: 'DELETE' });
+  },
+};
+
+// ==========================================
+// 4. Team Members & Invitations API (Documentation Chapter 5.4)
 // ==========================================
 export const memberApi = {
   // GET /api/users
@@ -119,7 +142,7 @@ export const memberApi = {
 };
 
 // ==========================================
-// 4. Feedback API (Documentation Chapter 5.8)
+// 5. Feedback API (Documentation Chapter 5.8)
 // ==========================================
 export const feedbackApi = {
   // GET /api/admin/feedback
