@@ -37,14 +37,11 @@ app.get("/health", async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
-=======
 app.use("/api/documents", documentRoutes);
 app.use("/api/folders", folderRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
->>>>>>> 3a5e7d801490d548e4617a0a958a1cecbdcbf2a7
 
 app.listen(process.env.PORT || 5001, () => {
     console.log("RAG Backend running");
