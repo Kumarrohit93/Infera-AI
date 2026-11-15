@@ -26,6 +26,7 @@ app.get("/health", async (req, res) => {
     }
 });
 
+
 app.listen(process.env.PORT || 5001, () => {
     console.log("RAG Backend running");
 });
