@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Bell,
-  Sparkles,
   ChevronRight,
   ChevronDown,
   Menu,
@@ -20,7 +19,7 @@ const PAGE_META = {
   '/folders': { title: 'Folders', subtitle: 'Departmental collections & access permissions' },
   '/add-member': { title: 'Add Member', subtitle: 'Manage organization employees and departments' },
   '/members': { title: 'Team Members', subtitle: 'Manage user roles and invitations' },
-  '/chat': { title: 'AI Chat', subtitle: 'Test citation accuracy & grounded retrieval' },
+  '/chat': { title: 'Test AI', subtitle: 'Test citation accuracy & grounded retrieval' },
   '/feedback': { title: 'Feedback', subtitle: 'Monitor ratings and answer quality' },
   '/settings': { title: 'Settings', subtitle: 'Configure organization, models & security' }
 };
@@ -37,7 +36,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
-  const searchInputRef = useRef(null);
 
   const [notifications, setNotifications] = useState([
     {
@@ -59,7 +57,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
   const currentMeta = PAGE_META[location.pathname] || { title: 'Dashboard', subtitle: '' };
 
-  // Close popovers on outside click & Escape, and support Ctrl+K / Cmd+K search focus
+  // Close popovers on outside click & Escape
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -75,10 +73,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
         setShowNotifications(false);
         setShowProfileMenu(false);
         setMobileSearchActive(false);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
       }
     };
 
@@ -176,18 +170,14 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-[#77716B] absolute left-3.5 pointer-events-none" />
           <input
-            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onFocus={() => setShowSearchDropdown(true)}
             onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search documents, folders, or members..."
-            className="w-full pl-9 pr-14 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/10 transition-all duration-200"
+            className="w-full pl-9 pr-3.5 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/10 transition-all duration-200"
           />
-          <span className="absolute right-2.5 text-[10px] font-bold text-[#77716B] bg-[#FFFFFF] px-1.5 py-0.5 rounded border border-[#E8DCD1] shadow-2xs pointer-events-none">
-            Ctrl+K
-          </span>
         </div>
       </div>
 
@@ -201,16 +191,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
           title="Search"
         >
           <Search className="w-4 h-4" />
-        </button>
-
-        {/* Quick Test AI Button */}
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F3E8DC] hover:bg-[#E8DCD1] text-[#4A3023] text-xs font-semibold border border-[#E8DCD1] transition-all duration-150 active:scale-95 shadow-2xs cursor-pointer"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-[#96613F]" />
-          <span>Test AI</span>
         </button>
 
         {/* Notifications Popover */}
