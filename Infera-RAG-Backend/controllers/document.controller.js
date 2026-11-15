@@ -1,5 +1,9 @@
-const { uploadDocumentSchema } = require("../validators/document.validator")
+const {
+  uploadDocumentSchema,
+  documentIdParamSchema,
+} = require("../validators/document.validator")
 const documentService = require("../Services/document.service")
+const { deleteDocument: removeDocument } = require("../Services/documentDelete.service")
 const { parseOrThrow } = require("../utils/validate")
 
 async function uploadDocument(req, res) {
@@ -13,4 +17,13 @@ async function uploadDocument(req, res) {
   res.status(202).json({ success: true, data: { document } })
 }
 
-module.exports = { uploadDocument }
+async function deleteDocument(req, res) {
+  const { id } = parseOrThrow(documentIdParamSchema, req.params)
+  await removeDocument({
+    organizationId: req.user.organizationId,
+    documentId: id,
+  })
+  res.status(204).send()
+}
+
+module.exports = { uploadDocument, deleteDocument }
