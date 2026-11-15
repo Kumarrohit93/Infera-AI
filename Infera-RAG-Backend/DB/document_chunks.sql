@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     page_number INTEGER CHECK (page_number IS NULL OR page_number > 0),
     heading TEXT,
     token_count INTEGER CHECK (token_count IS NULL OR token_count >= 0),
-    embedding VECTOR(1536),
-    embedding_model VARCHAR(100) NOT NULL DEFAULT 'text-embedding-3-small',
+    embedding VECTOR(3072),
+    embedding_model VARCHAR(100) NOT NULL DEFAULT 'gemini-embedding-001',
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
