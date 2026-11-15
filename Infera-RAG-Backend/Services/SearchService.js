@@ -1,13 +1,9 @@
+const { generateEmbedding } = require("./EmbeddingService");
+const { searchSimilarChunks } = require("../Repositories/SearchRepository");
+const { buildContext } = require("./ContextBuilder");
+const { generateAnswer } = require("./LLMService");
 
-const {
-    generateEmbedding,
-} = require("./EmbeddingService");
-
-const {
-    searchSimilarChunks,
-} = require("../Repositories/SearchRepository");
-
-// Search relevant document chunks for a user's question.
+// Search documents and generate an answer using retrieved context.
 const searchDocuments = async ({
     query,
     organizationId,
@@ -15,7 +11,6 @@ const searchDocuments = async ({
     minSimilarity = 0.50,
 }) => {
     try {
-        // Validate the user's question.
         if (!query || typeof query !== "string" || !query.trim()) {
             throw new Error("Search query cannot be empty");
         }
@@ -24,13 +19,13 @@ const searchDocuments = async ({
             throw new Error("Organization ID is required");
         }
 
-        // Generate an embedding for the user's question.
+        // Convert the user's question into an embedding.
         const queryEmbedding = await generateEmbedding(
             query.trim(),
             "RETRIEVAL_QUERY"
         );
 
-        // Search PostgreSQL for similar document chunks.
+        // Find relevant chunks from the same organization.
         const results = await searchSimilarChunks({
             organizationId,
             queryEmbedding,
@@ -38,8 +33,28 @@ const searchDocuments = async ({
             minSimilarity,
         });
 
+        // Return directly if no relevant chunks are found.
+        if (results.length === 0) {
+            return {
+                query: query.trim(),
+                answer: "I could not find this information in the provided documents.",
+                totalResults: 0,
+                results: [],
+            };
+        }
+
+        // Build context from the retrieved document chunks.
+        const context = buildContext(results);
+
+        // Generate an answer using only the retrieved context.
+        const answer = await generateAnswer({
+            question: query.trim(),
+            context,
+        });
+
         return {
-            query,
+            query: query.trim(),
+            answer,
             totalResults: results.length,
             results,
         };
