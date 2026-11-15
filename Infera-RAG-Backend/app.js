@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 require("dotenv").config();
 
 const pool = require("./Config/db");
@@ -7,6 +8,13 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+// Only the admin frontend origin may call this API from a browser
+app.use(
+    cors({
+        origin: process.env.CORS_ORIGIN || "http://localhost:5001",
+        credentials: true,
+    })
+);
 app.use(express.json());
 
 app.get("/health", async (req, res) => {
