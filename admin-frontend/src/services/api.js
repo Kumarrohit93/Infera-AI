@@ -4,7 +4,7 @@
  * Connects directly to backend API as specified in Infera Documentation (Chapter 5).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 
 // Helper function to handle standard JSON API requests
 async function request(endpoint, options = {}) {
