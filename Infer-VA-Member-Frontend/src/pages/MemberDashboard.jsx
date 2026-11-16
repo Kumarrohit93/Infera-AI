@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { initialDashboardStats } from "../data/dashboardData";
+import { FolderKanban, FileText, MessageSquare, HardDrive, FolderOpen } from "lucide-react";
 
 export default function MemberDashboard() {
   const [stats, setStats] = useState(initialDashboardStats);
@@ -27,14 +28,14 @@ export default function MemberDashboard() {
         </div>
       </div>
 
-      {/* Statistics Grid with Icons (Like Example Image) */}
+      {/* Statistics Grid with Lucide Icons */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Permitted Folders */}
         <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Permitted Folders</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-lg text-[#722F37]">
-              📁
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+              <FolderKanban className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 text-3xl font-bold text-[#722F37]">{stats.permittedFolders}</p>
@@ -47,8 +48,8 @@ export default function MemberDashboard() {
         <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Accessible Documents</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-lg text-[#722F37]">
-              📄
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+              <FileText className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 text-3xl font-bold text-[#722F37]">{stats.totalDocuments}</p>
@@ -61,8 +62,8 @@ export default function MemberDashboard() {
         <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Chats</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-lg text-[#722F37]">
-              💬
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+              <MessageSquare className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 text-3xl font-bold text-[#722F37]">{stats.activeChats}</p>
@@ -75,8 +76,8 @@ export default function MemberDashboard() {
         <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Storage Used</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-lg text-[#722F37]">
-              💾
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+              <HardDrive className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 text-3xl font-bold text-[#722F37]">{stats.storageUsed}</p>
@@ -88,8 +89,8 @@ export default function MemberDashboard() {
 
       {/* Empty State Section */}
       <div className="rounded-3xl border border-[#D7A781]/30 bg-white/90 p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#722F37]/10 text-2xl text-[#722F37]">
-          📂
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#722F37]/10 text-[#722F37]">
+          <FolderOpen className="h-8 w-8" />
         </div>
         <h3 className="mt-4 text-lg font-bold text-[#722F37]">No Recent Activity Found</h3>
         <p className="mt-1 text-sm text-gray-500 max-w-md mx-auto">
