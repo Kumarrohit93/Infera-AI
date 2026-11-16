@@ -5,10 +5,14 @@ const upload = require("../middleware/upload")
 const validateFile = require("../middleware/validateFile")
 const {
   uploadDocument,
+  listDocuments,
   deleteDocument,
 } = require("../controllers/document.controller")
 
 const router = express.Router()
+
+// Phase 1: Admin only. Members will get access after folder_permissions exists.
+router.get("/", authenticate, requireRole("admin"), listDocuments)
 
 router.post(
   "/upload",
