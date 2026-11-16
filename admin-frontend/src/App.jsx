@@ -13,6 +13,9 @@ import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
 import ChatPage from './pages/ChatPage';
 
+const CACHE_STORAGE_KEY = 'infera_admin_query_cache_v1';
+const PERSISTED_ROOT_KEYS = new Set(['folders', 'members', 'employees', 'documents']);
+
 // TanStack Query Client Configuration
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +25,44 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
+});
+
+// Hydrate cached folders, documents, employees, and members from localStorage
+try {
+  const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      parsed.forEach((entry) => {
+        if (entry?.queryKey && entry.data !== undefined) {
+          queryClient.setQueryData(entry.queryKey, entry.data);
+        }
+      });
+    }
+  }
+} catch {
+  // Ignore malformed localStorage cache
+}
+
+// Persist cache updates to localStorage until backend is connected
+queryClient.getQueryCache().subscribe((event) => {
+  if (!event?.query) return;
+  const rootKey = event.query.queryKey?.[0];
+  if (!PERSISTED_ROOT_KEYS.has(rootKey)) return;
+
+  try {
+    const entries = queryClient
+      .getQueryCache()
+      .getAll()
+      .filter((q) => PERSISTED_ROOT_KEYS.has(q.queryKey?.[0]) && q.state.data !== undefined)
+      .map((q) => ({
+        queryKey: q.queryKey,
+        data: q.state.data,
+      }));
+    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(entries));
+  } catch {
+    // Ignore storage quota or serialization errors
+  }
 });
 
 function ProtectedRoute({ children }) {

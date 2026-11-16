@@ -5,9 +5,18 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:3000/api';
+
+function handleUnauthorized() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('isAdminAuth');
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
 
 // Helper function to handle standard JSON API requests
-async function request(endpoint, options = {}) {
+async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
   const token = localStorage.getItem('accessToken');
 
   const headers = {
@@ -16,11 +25,16 @@ async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include', // Needed for httpOnly refresh cookies (Chapter 5.1)
   });
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new Error('Session expired. Please log in again.');
+  }
 
   // Handle 204 No Content
   if (response.status === 204) {
@@ -30,7 +44,7 @@ async function request(endpoint, options = {}) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.error?.message || 'API request failed');
+    throw new Error(data?.error?.message || data?.message || 'API request failed');
   }
 
   // Documentation specifies success envelope: { success: true, data: [...] }
@@ -38,7 +52,7 @@ async function request(endpoint, options = {}) {
 }
 
 // ==========================================
-// 1. Documents API (Documentation Chapter 5.6)
+// 1. Documents API (Documentation Chapter 5.6 - Port 4000)
 // ==========================================
 export const documentApi = {
   // GET /api/documents
@@ -59,9 +73,14 @@ export const documentApi = {
       body: formData, // Browser automatically sets Content-Type with boundary
     });
 
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error('Session expired. Please log in again.');
+    }
+
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data?.error?.message || 'Upload failed');
+      throw new Error(data?.error?.message || data?.message || 'Upload failed');
     }
     return data.data;
   },
@@ -73,7 +92,7 @@ export const documentApi = {
 };
 
 // ==========================================
-// 2. Folders API (Documentation Chapter 5.5)
+// 2. Folders API (Documentation Chapter 5.5 - Port 4000)
 // ==========================================
 export const folderApi = {
   // GET /api/folders
@@ -96,25 +115,48 @@ export const folderApi = {
 };
 
 // ==========================================
-// 3. Organization Employees API (Add Member Directory)
+// 3. Organization Employees & Departments API (Auth/DB Backend - Port 3000)
 // ==========================================
 export const employeeApi = {
   // GET /api/employees
   getEmployees: async () => {
-    return request('/employees');
+    return request('/employees', {}, AUTH_API_BASE_URL);
   },
 
   // POST /api/employees
   createEmployee: async (employeeData) => {
-    return request('/employees', {
-      method: 'POST',
-      body: JSON.stringify(employeeData),
-    });
+    return request(
+      '/employees',
+      {
+        method: 'POST',
+        body: JSON.stringify(employeeData),
+      },
+      AUTH_API_BASE_URL
+    );
   },
 
   // DELETE /api/employees/:id
   deleteEmployee: async (id) => {
-    return request(`/employees/${id}`, { method: 'DELETE' });
+    return request(`/employees/${id}`, { method: 'DELETE' }, AUTH_API_BASE_URL);
+  },
+};
+
+export const departmentApi = {
+  // GET /api/departments
+  getDepartments: async () => {
+    return request('/departments', {}, AUTH_API_BASE_URL);
+  },
+
+  // POST /api/departments
+  createDepartment: async (departmentData) => {
+    return request(
+      '/departments',
+      {
+        method: 'POST',
+        body: JSON.stringify(departmentData),
+      },
+      AUTH_API_BASE_URL
+    );
   },
 };
 

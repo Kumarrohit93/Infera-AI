@@ -17,6 +17,8 @@ import {
   FolderKanban
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { TableSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 // Framer motion variants
@@ -80,7 +82,7 @@ export default function DocumentsPage() {
   }, [folders, targetUploadFolder]);
 
   // TanStack Query: Fetch Documents (Strictly Zero Mock Data)
-  const { data: serverDocs = [], isLoading } = useQuery({
+  const { data: serverDocs = [], isLoading, isFetching } = useQuery({
     queryKey: ['documents', selectedFolderFilter],
     queryFn: async () => {
       try {
@@ -112,8 +114,9 @@ export default function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadingName, setCurrentUploadingName] = useState('');
 
-  // Inspect Modal state
+  // Inspect & Delete Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
+  const [docToDelete, setDocToDelete] = useState(null);
 
   // TanStack Mutation: Delete Document
   const deleteDocMutation = useMutation({
@@ -434,16 +437,13 @@ export default function DocumentsPage() {
           </div>
         </motion.div>
 
-        {/* 4. Documents Table / Responsive Container */}
+        {/* 4. Documents Table / Skeleton / Empty State */}
         <motion.div
           variants={itemVariants}
           className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
         >
-          {isLoading ? (
-            <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
-              <span>Loading documents...</span>
-            </div>
+          {isLoading || (isFetching && documents.length === 0) ? (
+            <TableSkeleton rows={5} columns={6} />
           ) : filteredDocuments.length === 0 ? (
             <div className="p-10 sm:p-14 text-center">
               <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
@@ -517,7 +517,7 @@ export default function DocumentsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(doc)}
+                            onClick={() => setDocToDelete(doc)}
                             className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                             title="Delete Document"
                           >
@@ -723,6 +723,22 @@ export default function DocumentsPage() {
           </AnimatePresence>,
           document.body
         )}
+
+      {/* 7. Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(docToDelete)}
+        title="Delete Document"
+        itemName={docToDelete?.name}
+        description="This document and its vector embeddings will be removed from the knowledge base."
+        confirmLabel="Delete"
+        onCancel={() => setDocToDelete(null)}
+        onConfirm={() => {
+          if (docToDelete) {
+            handleDelete(docToDelete);
+            setDocToDelete(null);
+          }
+        }}
+      />
     </>
   );
 }
