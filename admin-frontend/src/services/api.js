@@ -4,16 +4,7 @@
  * Connects directly to backend API as specified in Infera Documentation (Chapter 5).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:3000/api';
-
-function handleUnauthorized() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('isAdminAuth');
-  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-    window.location.href = '/login';
-  }
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 
 // Helper function to handle standard JSON API requests
 async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
