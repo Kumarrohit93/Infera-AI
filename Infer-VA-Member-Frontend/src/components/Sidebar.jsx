@@ -26,7 +26,7 @@ export default function Sidebar({ onClose }) {
             <button
               onClick={onClose}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md hover:bg-[#F8F4E7] transition cursor-pointer"
-              title="Toggle Sidebar"
+              title="Close Sidebar"
             >
               <img
                 src="/infera-logo.jpeg"
@@ -51,7 +51,7 @@ export default function Sidebar({ onClose }) {
           </button>
         </div>
 
-        {/* Navigation Links (Clean routing, no logout trigger) */}
+        {/* Navigation Links with onClick={onClose} added */}
         <nav className="space-y-1.5 px-4 py-6">
           {navItems.map((item) => {
             const IconComponent = item.icon;
@@ -59,6 +59,7 @@ export default function Sidebar({ onClose }) {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={onClose} // <-- Yeh line ensure karegi ki link click hote hi sidebar close ho jaye
                 className={({ isActive }) =>
                   `flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive

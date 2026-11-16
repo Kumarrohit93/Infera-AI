@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Bell, ChevronDown, User, Settings, LogOut, Check, X, Menu } from "lucide-react";
+import { Search, Bell, ChevronDown, User, Settings, LogOut, Check, X } from "lucide-react";
 
 export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const [showNotif, setShowNotif] = useState(false);
@@ -17,15 +17,19 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#D7A781]/40 bg-[#F8F4E7] px-4 md:px-8">
       
-      {/* Left: Toggle Button (Hidden when sidebar is open) & Title */}
+      {/* Left: Logo Button (Visible only when sidebar is closed) & Title */}
       <div className="flex items-center gap-3">
         {!sidebarOpen && (
           <button
             onClick={onToggleSidebar}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-[#D7A781]/40 text-[#722F37] hover:bg-[#D7A781]/20 transition shadow-sm"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-white border border-[#D7A781]/40 p-1.5 shadow-sm hover:bg-[#F8F4E7] transition cursor-pointer"
             title="Open Sidebar"
           >
-            <Menu className="h-5 w-5" />
+            <img
+              src="/infera-logo.jpeg"
+              alt="Infera AI Logo"
+              className="h-full w-full object-contain rounded-lg"
+            />
           </button>
         )}
 
@@ -49,7 +53,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
       {/* Right: Notifications & Profile */}
       <div className="flex items-center gap-3 md:gap-5">
         
-        {/* Notifications */}
+        {/* Notifications Dropdown */}
         <div className="relative">
           <button
             onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }}
