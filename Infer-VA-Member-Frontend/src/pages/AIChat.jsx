@@ -25,9 +25,37 @@ export default function AIChat() {
     return `Based on your permitted workspace documents, here is the relevant analysis regarding "${userMsg}". (Connect backend RAG API for live database retrieval.)`;
   };
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const loadConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      const list = await documentService.getConversations();
+      setConversations(list);
+    } catch (err) {
+      console.error("Error loading conversations:", err);
+      // Non-blocking error for conversation list
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
+  // 2. Select a Conversation: Load its persistent messages and citations
+  const handleSelectConversation = async (convId) => {
+    if (convId === activeConversationId || isLoading) return;
+    setActiveConversationId(convId);
+    setError(null);
+    setSidebarOpen(false);
+
+    try {
+      setIsLoading(true);
+      const historyMessages = await documentService.getConversationMessages(convId);
+      setMessages(historyMessages);
+    } catch (err) {
+      console.error("Error loading messages:", err);
+      setError("Failed to load conversation messages from database.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
     const userText = input;
     setMessages((prev) => [...prev, { id: Date.now(), sender: "user", text: userText }]);

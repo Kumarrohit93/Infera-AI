@@ -16,7 +16,7 @@ const {
 } = require("./Repositories/ChunkRepositery.js");
 
 // Test document and organization IDs from PostgreSQL.
-const DOCUMENT_ID = "afde8c59-c856-41bf-be80-546b4112314f";
+const DOCUMENT_ID = "d407afbc-d26f-4588-9235-39bb87605245";
 const ORGANIZATION_ID = "f3d1d933-a03a-4fee-acbb-c42d92ff0691";
 
 const testStorage = async () => {
@@ -25,7 +25,7 @@ const testStorage = async () => {
         const filePath = path.join(
             __dirname,
             "Sample-Documents",
-            "Rohit-Kumar-Resume.pdf"
+            "Backend all Topic.docx"
         );
 
         const document = await processDocument(filePath);
