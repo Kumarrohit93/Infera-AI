@@ -5,6 +5,12 @@ const {
 const documentService = require("../Services/document.service");
 const { deleteDocument: removeDocument } = require("../Services/documentDelete.service");
 const { parseOrThrow } = require("../utils/validate");
+  listDocumentsQuerySchema,
+} = require("../validators/document.validator")
+const documentService = require("../Services/document.service")
+const { deleteDocument: removeDocument } = require("../Services/documentDelete.service")
+const { listDocuments: findDocuments } = require("../Services/documentList.service")
+const { parseOrThrow } = require("../utils/validate")
 
 async function uploadDocument(req, res) {
   const { folderId } = parseOrThrow(uploadDocumentSchema, req.body);
@@ -26,6 +32,15 @@ async function listDocuments(req, res) {
     folderId,
   });
   res.status(200).json({ success: true, data: documents });
+}
+
+async function listDocuments(req, res) {
+  const query = parseOrThrow(listDocumentsQuerySchema, req.query)
+  const { documents, meta } = await findDocuments({
+    organizationId: req.user.organizationId,
+    ...query,
+  })
+  res.json({ success: true, data: documents, meta })
 }
 
 async function deleteDocument(req, res) {
