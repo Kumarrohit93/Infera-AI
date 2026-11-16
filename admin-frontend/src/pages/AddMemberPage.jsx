@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { employeeApi } from '../services/api';
+import { employeeApi, departmentApi } from '../services/api';
 import {
   UserPlus,
   Search,
@@ -14,10 +14,11 @@ import {
   X,
   Filter,
   Inbox,
-  Loader2,
   Eye,
   EyeOff
 } from 'lucide-react';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { TableSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 export const DEPARTMENTS = [
@@ -28,6 +29,17 @@ export const DEPARTMENTS = [
   'Operations',
   'General'
 ];
+
+const formatDate = (isoDate) => {
+  if (!isoDate) return '—';
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return parsed.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -52,15 +64,27 @@ const itemVariants = {
 export default function AddMemberPage() {
   const queryClient = useQueryClient();
 
-  // TanStack Query: Fetch Organization Employees (Zero Mock Data)
-  const { data: employees = [], isLoading } = useQuery({
+  // TanStack Query: Fetch Organization Employees (Port 3000)
+  const { data: employees = [], isLoading, isFetching } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
+      const res = await employeeApi.getEmployees();
+      return Array.isArray(res) ? res : [];
+    },
+    initialData: [],
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  // TanStack Query: Fetch Departments (fallback to default DEPARTMENTS if empty/offline)
+  const { data: serverDepartments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
       try {
-        const res = await employeeApi.getEmployees();
+        const res = await departmentApi.getDepartments();
         return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['employees']) ?? [];
+      } catch {
+        return [];
       }
     },
     initialData: [],
@@ -68,10 +92,16 @@ export default function AddMemberPage() {
     retry: false,
   });
 
+  const departmentOptions =
+    serverDepartments.length > 0
+      ? serverDepartments.map((d) => (typeof d === 'string' ? d : d?.name)).filter(Boolean)
+      : DEPARTMENTS;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -82,36 +112,31 @@ export default function AddMemberPage() {
     department: DEPARTMENTS[0]
   });
 
-  // Create Employee Mutation
+  // Create Employee Mutation (Real backend error handling - no fake fallback)
   const createEmployeeMutation = useMutation({
     mutationFn: employeeApi.createEmployee,
-    onSuccess: (newEmp) => {
+    onSuccess: (newEmp, variables) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      toast.success(`Employee "${newEmp?.name || formData.name}" added to ${formData.department}.`);
+      toast.success(
+        `Employee "${newEmp?.name || variables.name}" added to ${newEmp?.department || variables.department}.`
+      );
+      setIsAddModalOpen(false);
     },
-    onError: () => {
-      const fallbackEmp = {
-        id: `emp-${Date.now()}`,
-        name: formData.name.trim(),
-        employeeId: formData.employeeId.trim().toUpperCase(),
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim(),
-        department: formData.department,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      queryClient.setQueryData(['employees'], (prev = []) => [fallbackEmp, ...prev]);
-      toast.success(`Employee "${fallbackEmp.name}" added to ${fallbackEmp.department}.`);
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to create employee.');
     }
   });
 
   // Delete Employee Mutation
   const deleteEmployeeMutation = useMutation({
     mutationFn: employeeApi.deleteEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-    },
-    onError: (_err, empId) => {
+    onSuccess: (_data, empId) => {
       queryClient.setQueryData(['employees'], (prev = []) => prev.filter((e) => e.id !== empId));
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee removed from directory.');
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to remove employee.');
     }
   });
 
@@ -122,7 +147,7 @@ export default function AddMemberPage() {
       email: '',
       phone: '',
       password: '',
-      department: DEPARTMENTS[0]
+      department: departmentOptions[0] || DEPARTMENTS[0]
     });
     setShowPassword(false);
     setIsAddModalOpen(true);
@@ -141,14 +166,6 @@ export default function AddMemberPage() {
       return;
     }
 
-    const duplicateEmail = employees.some(
-      (emp) => emp.email.toLowerCase() === formData.email.trim().toLowerCase()
-    );
-    if (duplicateEmail) {
-      toast.error('An employee with this email already exists.');
-      return;
-    }
-
     createEmployeeMutation.mutate({
       name: formData.name.trim(),
       employeeId: formData.employeeId.trim().toUpperCase(),
@@ -157,22 +174,21 @@ export default function AddMemberPage() {
       password: formData.password,
       department: formData.department
     });
-    setIsAddModalOpen(false);
   };
 
   const handleDelete = (emp) => {
     deleteEmployeeMutation.mutate(emp.id);
-    queryClient.setQueryData(['employees'], (prev = []) => prev.filter((e) => e.id !== emp.id));
-    toast.error(`Employee "${emp.name}" removed from directory.`);
   };
 
   const filteredEmployees = employees.filter((emp) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
-      emp.name.toLowerCase().includes(q) ||
-      emp.email.toLowerCase().includes(q) ||
+      (emp.name || '').toLowerCase().includes(q) ||
+      (emp.email || '').toLowerCase().includes(q) ||
       (emp.employeeId || '').toLowerCase().includes(q);
-    const matchesDept = deptFilter === 'All' || emp.department === deptFilter;
+    const matchesDept =
+      deptFilter === 'All' ||
+      (emp.department || '').toLowerCase() === deptFilter.toLowerCase();
     return matchesSearch && matchesDept;
   });
 
@@ -233,7 +249,7 @@ export default function AddMemberPage() {
               className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
             >
               <option value="All">All Departments</option>
-              {DEPARTMENTS.map((dept) => (
+              {departmentOptions.map((dept) => (
                 <option key={dept} value={dept}>
                   {dept}
                 </option>
@@ -242,16 +258,13 @@ export default function AddMemberPage() {
           </div>
         </motion.div>
 
-        {/* 3. Employees Table / Empty State */}
+        {/* 3. Employees Table / Skeleton / Empty State */}
         <motion.div
           variants={itemVariants}
           className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
         >
-          {isLoading ? (
-            <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
-              <span>Loading organization employees...</span>
-            </div>
+          {isLoading || (isFetching && employees.length === 0) ? (
+            <TableSkeleton rows={4} columns={6} />
           ) : filteredEmployees.length === 0 ? (
             <div className="p-10 sm:p-14 text-center">
               <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
@@ -295,7 +308,7 @@ export default function AddMemberPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-[#96613F] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                            {emp.name
+                            {(emp.name || 'U')
                               .split(' ')
                               .map((n) => n[0])
                               .join('')
@@ -335,12 +348,12 @@ export default function AddMemberPage() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-3 text-xs text-[#77716B]">{emp.createdAt}</td>
+                      <td className="px-4 py-3 text-xs text-[#77716B]">{formatDate(emp.createdAt)}</td>
 
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
-                          onClick={() => handleDelete(emp)}
+                          onClick={() => setEmployeeToDelete(emp)}
                           className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Remove Employee"
                         >
@@ -450,7 +463,7 @@ export default function AddMemberPage() {
                           onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                           className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] font-medium focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
                         >
-                          {DEPARTMENTS.map((dept) => (
+                          {departmentOptions.map((dept) => (
                             <option key={dept} value={dept}>
                               {dept}
                             </option>
@@ -490,9 +503,10 @@ export default function AddMemberPage() {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+                        disabled={createEmployeeMutation.isPending}
+                        className="px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                       >
-                        Create Employee
+                        {createEmployeeMutation.isPending ? 'Creating...' : 'Create Employee'}
                       </button>
                     </div>
                   </form>
@@ -502,6 +516,22 @@ export default function AddMemberPage() {
           </AnimatePresence>,
           document.body
         )}
+
+      {/* 5. Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(employeeToDelete)}
+        title="Remove Employee"
+        itemName={employeeToDelete?.name}
+        description="This employee will be removed from the organization directory."
+        confirmLabel="Remove"
+        onCancel={() => setEmployeeToDelete(null)}
+        onConfirm={() => {
+          if (employeeToDelete) {
+            handleDelete(employeeToDelete);
+            setEmployeeToDelete(null);
+          }
+        }}
+      />
     </>
   );
 }
