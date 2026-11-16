@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate, Navigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Scroll main content to top smoothly on page change
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
 
   // STRICT AUTH CHECK: Agar admin login nahi hai toh layout bilkul render na ho, seedha /login bhejo
   const isAuth = localStorage.getItem('isAdminAuth') === 'true';
@@ -77,10 +84,23 @@ export default function AdminLayout({ children }) {
           />
         </div>
 
-        {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto custom-sidebar-scroll p-3.5 sm:p-5 md:p-6 lg:p-7">
+        {/* Scrollable Main Content with Smooth Page Transitions */}
+        <main
+          ref={mainRef}
+          className="flex-1 overflow-y-auto custom-sidebar-scroll p-3.5 sm:p-5 md:p-6 lg:p-7"
+        >
           <div className="max-w-[1440px] w-full mx-auto">
-            {children || <Outlet />}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {children || <Outlet />}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

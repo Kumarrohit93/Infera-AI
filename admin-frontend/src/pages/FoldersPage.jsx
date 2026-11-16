@@ -18,9 +18,10 @@ import {
   Calendar,
   Inbox,
   HardDrive,
-  ShieldCheck,
-  Loader2
+  ShieldCheck
 } from 'lucide-react';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { TableSkeleton, FolderGridSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 // Framer motion variants
@@ -48,7 +49,7 @@ export default function FoldersPage() {
   const queryClient = useQueryClient();
 
   // 1. TanStack Query: Fetch Folders (Strictly Zero Mock Data, preserves offline cache)
-  const { data: serverFolders = [], isLoading } = useQuery({
+  const { data: serverFolders = [], isLoading, isFetching } = useQuery({
     queryKey: ['folders'],
     queryFn: async () => {
       try {
@@ -98,6 +99,7 @@ export default function FoldersPage() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState(null);
+  const [folderToDelete, setFolderToDelete] = useState(null);
 
   // Form Fields State
   const [formData, setFormData] = useState({
@@ -298,11 +300,14 @@ export default function FoldersPage() {
 
         {/* 3. Empty State, Loading Skeleton, or Folders List */}
         <motion.div variants={itemVariants}>
-          {isLoading ? (
-            <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
-              <span>Loading departmental folders...</span>
-            </div>
+          {isLoading || (isFetching && folders.length === 0) ? (
+            viewMode === 'grid' ? (
+              <FolderGridSkeleton cards={6} />
+            ) : (
+              <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] shadow-sm overflow-hidden">
+                <TableSkeleton rows={4} columns={6} />
+              </div>
+            )
           ) : filteredFolders.length === 0 ? (
             <div className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] p-10 sm:p-14 text-center shadow-sm">
               <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
@@ -368,7 +373,7 @@ export default function FoldersPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteFolder(folder.id, folder.name)}
+                            onClick={() => setFolderToDelete(folder)}
                             className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                             title="Delete Folder"
                           >
@@ -488,7 +493,7 @@ export default function FoldersPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteFolder(folder.id, folder.name)}
+                              onClick={() => setFolderToDelete(folder)}
                               className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                               title="Delete Folder"
                             >
@@ -628,6 +633,22 @@ export default function FoldersPage() {
           </AnimatePresence>,
           document.body
         )}
+
+      {/* 5. Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(folderToDelete)}
+        title="Delete Folder"
+        itemName={folderToDelete?.name}
+        description="This folder and its access configuration will be permanently removed."
+        confirmLabel="Delete"
+        onCancel={() => setFolderToDelete(null)}
+        onConfirm={() => {
+          if (folderToDelete) {
+            handleDeleteFolder(folderToDelete.id, folderToDelete.name);
+            setFolderToDelete(null);
+          }
+        }}
+      />
     </>
   );
 }

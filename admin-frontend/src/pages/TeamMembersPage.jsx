@@ -15,10 +15,11 @@ import {
   Check,
   Filter,
   Inbox,
-  Loader2,
   Building2
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { TableSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 const containerVariants = {
@@ -45,7 +46,7 @@ export default function TeamMembersPage() {
   const queryClient = useQueryClient();
 
   // 1. Fetch Invited / Active Team Members (Zero Mock Data)
-  const { data: serverMembers = [], isLoading } = useQuery({
+  const { data: serverMembers = [], isLoading, isFetching } = useQuery({
     queryKey: ['members'],
     queryFn: async () => {
       try {
@@ -110,6 +111,7 @@ export default function TeamMembersPage() {
   // Modals state
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [memberToDelete, setMemberToDelete] = useState(null);
 
   // Invite / Edit Form State (Department -> Employee -> Folders)
   const [selectedDepartment, setSelectedDepartment] = useState(DEPARTMENTS[0]);
@@ -309,16 +311,13 @@ export default function TeamMembersPage() {
           </div>
         </motion.div>
 
-        {/* 3. Members Table / Empty State */}
+        {/* 3. Members Table / Skeleton / Empty State */}
         <motion.div
           variants={itemVariants}
           className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md"
         >
-          {isLoading ? (
-            <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
-              <span>Loading team members...</span>
-            </div>
+          {isLoading || (isFetching && members.length === 0) ? (
+            <TableSkeleton rows={4} columns={6} />
           ) : filteredMembers.length === 0 ? (
             <div className="p-10 sm:p-14 text-center">
               <div className="w-12 h-12 rounded-full bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] mx-auto mb-3 shadow-inner">
@@ -423,7 +422,7 @@ export default function TeamMembersPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteMember(member.id, member.name)}
+                            onClick={() => setMemberToDelete(member)}
                             className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                             title="Remove Member"
                           >
@@ -589,6 +588,22 @@ export default function TeamMembersPage() {
           </AnimatePresence>,
           document.body
         )}
+
+      {/* 5. Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(memberToDelete)}
+        title="Remove Team Member"
+        itemName={memberToDelete?.name}
+        description="This member will lose access to their assigned organization folders."
+        confirmLabel="Remove"
+        onCancel={() => setMemberToDelete(null)}
+        onConfirm={() => {
+          if (memberToDelete) {
+            handleDeleteMember(memberToDelete.id, memberToDelete.name);
+            setMemberToDelete(null);
+          }
+        }}
+      />
     </>
   );
 }
