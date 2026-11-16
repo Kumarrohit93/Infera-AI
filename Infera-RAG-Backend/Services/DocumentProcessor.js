@@ -3,17 +3,59 @@ const mammoth = require("mammoth");
 const path = require("path");
 const fs = require("fs/promises");
 
+
+
 const extractDocxText = async (filePath) => {
     try {
-        const result = await mammoth.extractRawText({
+        const result = await mammoth.convertToHtml({
             path: filePath,
         });
 
-        return result.value;
+        const sections = [];
+        let currentHeading = "General";
+
+        // Read paragraphs and lists from converted HTML.
+        const elements = result.value.match(
+            /<p[^>]*>[\s\S]*?<\/p>|<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<ol[^>]*>[\s\S]*?<\/ol>|<ul[^>]*>[\s\S]*?<\/ul>/gi
+        ) || [];
+
+        for (const element of elements) {
+            const isHeading = /^<h[1-6]/i.test(element);
+
+            const text = element
+                .replace(/<[^>]*>/g, " ")
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            if (!text) continue;
+
+            // Detect numbered bold section headings.
+            const isNumberedHeading =
+                /^<p[^>]*>\s*<strong>[\s\S]*?<\/strong>\s*<\/p>$/i.test(element) &&
+                /^\d+\.\s+/.test(text);
+
+            if (isHeading || isNumberedHeading) {
+                currentHeading = text;
+                continue;
+            }
+
+            sections.push({
+                heading: currentHeading,
+                text,
+            });
+        }
+
+        return sections;
     } catch (error) {
         throw new Error(`DOCX extraction failed: ${error.message}`);
     }
 };
+
 
 
 const extractPdfText = async (filePath) => {
@@ -54,18 +96,20 @@ const extractTxtText = async (filePath) => {
 };
 
 
+
 const processDocument = async (filePath) => {
     const extension = path.extname(filePath).toLowerCase();
 
     let content = [];
 
     if (extension === ".docx") {
-        const text = await extractDocxText(filePath);
+        const sections = await extractDocxText(filePath);
 
-        content = [{
+        content = sections.map((section) => ({
             pageNumber: null,
-            text: text.trim()
-        }];
+            heading: section.heading,
+            text: section.text,
+        }));
     }
 
     else if (extension === ".pdf") {
@@ -77,7 +121,8 @@ const processDocument = async (filePath) => {
 
         content = [{
             pageNumber: null,
-            text: text.trim()
+            heading: null,
+            text,
         }];
     }
 
@@ -89,7 +134,7 @@ const processDocument = async (filePath) => {
         fileName: path.basename(filePath),
         fileType: extension.substring(1),
         totalPages: extension === ".pdf" ? content.length : null,
-        content
+        content,
     };
 };
 

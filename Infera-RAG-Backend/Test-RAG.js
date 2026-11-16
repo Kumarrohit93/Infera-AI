@@ -6,7 +6,7 @@ const { searchDocuments } = require("./Services/SearchService");
 const testRAG = async () => {
     try {
         const result = await searchDocuments({
-            query: "What is my favorite programming language?",
+            query: "Explain Node.js fundamentals and its event loop?",
             organizationId: "f3d1d933-a03a-4fee-acbb-c42d92ff0691",
             limit: 5,
             minSimilarity: 0.50,
@@ -21,6 +21,28 @@ const testRAG = async () => {
         console.log(result.answer);
 
         console.log("\n================================\n");
+
+        console.log("\nSource References:");
+
+        result.sources.forEach((source) => {
+            console.log(`\n[${source.sourceId}] ${source.documentName}`);
+            console.log("Page:", source.pageNumber);
+            console.log("Similarity:", source.similarity);
+        });
+
+        result.sources.forEach((source) => {
+            console.log(`\n[${source.sourceId}] ${source.documentName}`);
+            console.log("Section:", source.heading);
+            console.log("Chunk Index:", source.chunkIndex);
+            console.log("Page:", source.pageNumber);
+            console.log("Similarity:", source.similarity);
+        });
+
+        console.log("\n========== CITATION VALIDATION ==========\n");
+
+        console.log(result.citationValidation);
+
+        console.log("\n=========================================\n");
     } catch (error) {
         console.error("RAG Test Failed:", error.message);
     }

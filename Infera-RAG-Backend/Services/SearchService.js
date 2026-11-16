@@ -1,9 +1,11 @@
+
 const { generateEmbedding } = require("./EmbeddingService");
 const { searchSimilarChunks } = require("../Repositories/SearchRepository");
 const { buildContext } = require("./ContextBuilder");
 const { generateAnswer } = require("./LLMService");
+const { validateCitations } = require("./CitationValidator");
 
-// Search documents and generate an answer using retrieved context.
+// Search documents and generate an answer with validated citations.
 const searchDocuments = async ({
     query,
     organizationId,
@@ -11,6 +13,7 @@ const searchDocuments = async ({
     minSimilarity = 0.50,
 }) => {
     try {
+        // Validate the user's question and organization.
         if (!query || typeof query !== "string" || !query.trim()) {
             throw new Error("Search query cannot be empty");
         }
@@ -19,13 +22,13 @@ const searchDocuments = async ({
             throw new Error("Organization ID is required");
         }
 
-        // Convert the user's question into an embedding.
+        // Generate an embedding for the user's question.
         const queryEmbedding = await generateEmbedding(
             query.trim(),
             "RETRIEVAL_QUERY"
         );
 
-        // Find relevant chunks from the same organization.
+        // Retrieve relevant document chunks.
         const results = await searchSimilarChunks({
             organizationId,
             queryEmbedding,
@@ -33,30 +36,47 @@ const searchDocuments = async ({
             minSimilarity,
         });
 
-        // Return directly if no relevant chunks are found.
+        // Return a fallback when no relevant chunks are found.
         if (results.length === 0) {
             return {
                 query: query.trim(),
                 answer: "I could not find this information in the provided documents.",
                 totalResults: 0,
-                results: [],
+                sources: [],
+                citationValidation: {
+                    isValid: true,
+                    usedCitations: [],
+                    invalidCitations: [],
+                },
             };
         }
 
-        // Build context from the retrieved document chunks.
-        const context = buildContext(results);
+        // Build document context and source references.
+        const { context, sources } = buildContext(results);
 
-        // Generate an answer using only the retrieved context.
-        const answer = await generateAnswer({
+        // Generate an answer using the retrieved context.
+        const generatedAnswer = await generateAnswer({
             question: query.trim(),
             context,
         });
+
+        // Validate citation IDs against retrieved sources.
+        const citationValidation = validateCitations(
+            generatedAnswer,
+            sources
+        );
+
+        // Reject answers containing invalid citation IDs.
+        const answer = citationValidation.isValid
+            ? generatedAnswer
+            : "I could not provide a reliably cited answer from the retrieved documents.";
 
         return {
             query: query.trim(),
             answer,
             totalResults: results.length,
-            results,
+            sources,
+            citationValidation,
         };
     } catch (error) {
         throw new Error(`Document Search Error: ${error.message}`);

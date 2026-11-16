@@ -9,7 +9,7 @@ const ai = new GoogleGenAI({
 // Gemini model used for answer generation.
 const MODEL_NAME = "gemini-2.5-flash";
 
-// Generate an answer using the retrieved document context.
+// Generate an answer with citations using retrieved document context.
 const generateAnswer = async ({ question, context }) => {
     try {
         // Validate the question and context.
@@ -21,7 +21,7 @@ const generateAnswer = async ({ question, context }) => {
             throw new Error("Context cannot be empty");
         }
 
-        // Create instructions to keep answers grounded in documents.
+        // Ask Gemini to generate answers with source citations.
         const prompt = `
 You are an AI assistant for an enterprise knowledge base.
 
@@ -32,8 +32,12 @@ Rules:
 2. Do not invent facts or information.
 3. If the answer is not available in the context, clearly say:
    "I could not find this information in the provided documents."
-4. Give clear and direct answers.
-5. Use bullet points when useful.
+4. Add source citations like [1] or [2] after every factual claim.
+5. Use only source numbers that actually exist in the provided context.
+6. Do not create fake citations.
+7. If multiple sources support an answer, cite all relevant sources.
+8. Give clear and direct answers.
+9. Use bullet points when useful.
 
 DOCUMENT CONTEXT:
 ${context}
