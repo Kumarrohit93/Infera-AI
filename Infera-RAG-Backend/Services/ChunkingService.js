@@ -6,12 +6,13 @@ const encoding = get_encoding("cl100k_base");
 const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 75;
 
+
 const createChunks = (document) => {
     const chunks = [];
     let globalChunkIndex = 0;
 
-    document.content.forEach((page) => {
-        const tokens = encoding.encode(page.text);
+    document.content.forEach((section) => {
+        const tokens = encoding.encode(section.text);
 
         let start = 0;
 
@@ -25,9 +26,10 @@ const createChunks = (document) => {
                 chunkIndex: globalChunkIndex,
                 documentName: document.fileName,
                 fileType: document.fileType,
-                pageNumber: page.pageNumber,
+                pageNumber: section.pageNumber ?? null,
+                heading: section.heading ?? null,
                 text: Buffer.from(chunkText).toString("utf-8").trim(),
-                tokenCount: chunkTokens.length
+                tokenCount: chunkTokens.length,
             });
 
             globalChunkIndex++;

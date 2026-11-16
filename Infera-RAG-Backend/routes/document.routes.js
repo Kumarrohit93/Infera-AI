@@ -1,19 +1,20 @@
-const express = require("express")
-const authenticate = require("../middleware/authenticate")
-const requireRole = require("../middleware/requireRole")
-const upload = require("../middleware/upload")
-const validateFile = require("../middleware/validateFile")
+const express = require("express");
+const authenticate = require("../middleware/authenticate");
+const requireRole = require("../middleware/requireRole");
+const upload = require("../middleware/upload");
+const validateFile = require("../middleware/validateFile");
 const {
   uploadDocument,
   listDocuments,
   deleteDocument,
-} = require("../controllers/document.controller")
+} = require("../Controllers/document.controller");
 
-const router = express.Router()
+const router = express.Router();
 
-// Phase 1: Admin only. Members will get access after folder_permissions exists.
-router.get("/", authenticate, requireRole("admin"), listDocuments)
+// List documents: Admin lists all, Member lists only authorized documents
+router.get("/", authenticate, listDocuments);
 
+// Upload: Admin only
 router.post(
   "/upload",
   authenticate,
@@ -21,8 +22,9 @@ router.post(
   upload,
   validateFile,
   uploadDocument
-)
+);
 
-router.delete("/:id", authenticate, requireRole("admin"), deleteDocument)
+// Delete: Admin only
+router.delete("/:id", authenticate, requireRole("admin"), deleteDocument);
 
-module.exports = router
+module.exports = router;

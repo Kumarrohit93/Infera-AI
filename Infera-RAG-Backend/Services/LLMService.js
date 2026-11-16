@@ -6,23 +6,34 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
 });
 
-// Gemini model used for answer generation.
 const MODEL_NAME = "gemini-2.5-flash";
+const MAX_RETRIES = 3;
 
-// Generate an answer using the retrieved document context.
+// Check whether the error is temporary and retryable.
+const isRetryableError = (error) => {
+    const message = String(error.message || "");
+
+    return (
+        /\b(429|500|502|503|504)\b/.test(message) ||
+        /UNAVAILABLE|RESOURCE_EXHAUSTED|fetch failed|ECONNRESET|ETIMEDOUT/i.test(message)
+    );
+};
+
+// Wait before retrying.
+const delay = (ms) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+// Generate an answer with citations using retrieved document context.
 const generateAnswer = async ({ question, context }) => {
-    try {
-        // Validate the question and context.
-        if (!question || !question.trim()) {
-            throw new Error("Question cannot be empty");
-        }
+    if (!question || !question.trim()) {
+        throw new Error("Question cannot be empty");
+    }
 
-        if (!context || !context.trim()) {
-            throw new Error("Context cannot be empty");
-        }
+    if (!context || !context.trim()) {
+        throw new Error("Context cannot be empty");
+    }
 
-        // Create instructions to keep answers grounded in documents.
-        const prompt = `
+    const prompt = `
 You are an AI assistant for an enterprise knowledge base.
 
 Answer the user's question using ONLY the provided document context.
@@ -32,8 +43,12 @@ Rules:
 2. Do not invent facts or information.
 3. If the answer is not available in the context, clearly say:
    "I could not find this information in the provided documents."
-4. Give clear and direct answers.
-5. Use bullet points when useful.
+4. Add source citations like [1] or [2] after every factual claim.
+5. Use only source numbers that actually exist in the provided context.
+6. Do not create fake citations.
+7. If multiple sources support an answer, cite all relevant sources.
+8. Give clear and direct answers.
+9. Use bullet points when useful.
 
 DOCUMENT CONTEXT:
 ${context}
@@ -44,21 +59,38 @@ ${question}
 ANSWER:
 `;
 
-        // Generate the answer using Gemini.
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-        });
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`Gemini generation attempt: ${attempt + 1}`);
 
-        const answer = response.text;
+            const response = await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+            });
 
-        if (!answer || !answer.trim()) {
-            throw new Error("Gemini returned an empty response");
+            const answer = response.text;
+
+            if (!answer || !answer.trim()) {
+                throw new Error("Gemini returned an empty response");
+            }
+
+            return answer.trim();
+
+        } catch (error) {
+            if (attempt === MAX_RETRIES || !isRetryableError(error)) {
+                throw new Error(
+                    `Gemini Answer Generation Error: ${error.message}`
+                );
+            }
+
+            const waitTime = 2000 * Math.pow(2, attempt);
+
+            console.log(
+                `Gemini temporarily unavailable. Retrying in ${waitTime / 1000} seconds...`
+            );
+
+            await delay(waitTime);
         }
-
-        return answer.trim();
-    } catch (error) {
-        throw new Error(`Gemini Answer Generation Error: ${error.message}`);
     }
 };
 
