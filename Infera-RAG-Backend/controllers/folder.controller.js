@@ -31,6 +31,7 @@ async function updateFolder(req, res) {
   const body = parseOrThrow(updateFolderSchema, req.body)
   const folder = await folderService.updateFolder({
     organizationId: req.user.organizationId,
+    userId: req.user.userId,
     folderId: id,
     ...body,
   })

@@ -3,13 +3,15 @@ const cors = require("cors");
 require("dotenv").config();
 
 const pool = require("./Config/db");
-const documentRoutes = require("./routes/document.routes");
-const folderRoutes = require("./routes/folder.routes");
+const { initDb } = require("./Config/initDb");
+const documentRoutes = require("./Routes/document.routes");
+const folderRoutes = require("./Routes/folder.routes");
+const ragRoutes = require("./Routes/rag.routes");
+const conversationRoutes = require("./Routes/conversation.routes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
-// Only the admin frontend origin may call this API from a browser
 app.use(
     cors({
         origin: process.env.CORS_ORIGIN || "http://localhost:5001",
@@ -39,10 +41,14 @@ app.get("/health", async (req, res) => {
 
 app.use("/api/documents", documentRoutes);
 app.use("/api/folders", folderRoutes);
+app.use("/api/rag", ragRoutes);
+app.use("/api/conversations", conversationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(process.env.PORT || 5001, () => {
-    console.log("RAG Backend running");
+const port = process.env.PORT || 7000;
+app.listen(port, async () => {
+    console.log(`RAG Backend running on port ${port}`);
+    await initDb();
 });

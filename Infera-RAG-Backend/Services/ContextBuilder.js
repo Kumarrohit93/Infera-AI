@@ -1,4 +1,3 @@
-
 // This file builds document context and source references for Gemini.
 
 const buildContext = (chunks) => {
@@ -14,8 +13,8 @@ const buildContext = (chunks) => {
         chunkId: chunk.chunk_id,
         chunkIndex: chunk.chunk_index,
         heading: chunk.heading || null,
-        pageNumber: chunk.page_number,
-        similarity: Number(chunk.similarity),
+        pageNumber: chunk.page_number !== undefined && chunk.page_number !== null ? Number(chunk.page_number) : null,
+        similarity: Number(Number(chunk.similarity).toFixed(2)),
     }));
 
     // Build readable context with document headings.

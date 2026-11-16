@@ -1,15 +1,17 @@
-const { PDFParse } = require("pdf-parse")
+const { PDFParse } = require("pdf-parse");
 const mammoth = require("mammoth");
 const path = require("path");
 const fs = require("fs/promises");
 
-
-
-const extractDocxText = async (filePath) => {
+const extractDocxText = async (source) => {
     try {
-        const result = await mammoth.convertToHtml({
-            path: filePath,
-        });
+        const mammothOptions = Buffer.isBuffer(source)
+            ? { buffer: source }
+            : typeof source === "object" && source.buffer
+            ? { buffer: source.buffer }
+            : { path: source };
+
+        const result = await mammoth.convertToHtml(mammothOptions);
 
         const sections = [];
         let currentHeading = "General";
@@ -56,13 +58,15 @@ const extractDocxText = async (filePath) => {
     }
 };
 
-
-
-const extractPdfText = async (filePath) => {
+const extractPdfText = async (source) => {
     let parser;
 
     try {
-        const buffer = await fs.readFile(filePath);
+        const buffer = Buffer.isBuffer(source)
+            ? source
+            : typeof source === "object" && source.buffer
+            ? source.buffer
+            : await fs.readFile(source);
 
         parser = new PDFParse({ data: buffer });
 
@@ -74,7 +78,6 @@ const extractPdfText = async (filePath) => {
         }));
 
         return pages;
-
     } catch (error) {
         throw new Error(`PDF extraction failed: ${error.message}`);
     } finally {
@@ -84,60 +87,75 @@ const extractPdfText = async (filePath) => {
     }
 };
 
-const extractTxtText = async (filePath) => {
+const extractTxtText = async (source) => {
     try {
-        const text = await fs.readFile(filePath, "utf-8");
-
+        if (Buffer.isBuffer(source)) {
+            return source.toString("utf-8").trim();
+        }
+        if (typeof source === "object" && source.buffer) {
+            return source.buffer.toString("utf-8").trim();
+        }
+        const text = await fs.readFile(source, "utf-8");
         return text.trim();
-
     } catch (error) {
         throw new Error(`TXT extraction failed: ${error.message}`);
     }
 };
 
+const processDocument = async (input) => {
+    let filePath = null;
+    let buffer = null;
+    let fileName = "";
+    let extension = "";
 
-
-const processDocument = async (filePath) => {
-    const extension = path.extname(filePath).toLowerCase();
+    if (typeof input === "string") {
+        filePath = input;
+        fileName = path.basename(filePath);
+        extension = path.extname(filePath).toLowerCase();
+    } else if (input && typeof input === "object") {
+        filePath = input.filePath || null;
+        buffer = input.buffer || null;
+        fileName = input.originalFilename || (filePath ? path.basename(filePath) : "document");
+        extension = input.extension
+            ? (input.extension.startsWith(".") ? input.extension.toLowerCase() : `.${input.extension.toLowerCase()}`)
+            : (filePath ? path.extname(filePath).toLowerCase() : "");
+    } else {
+        throw new Error("Invalid document processor input");
+    }
 
     let content = [];
 
     if (extension === ".docx") {
-        const sections = await extractDocxText(filePath);
-
+        const sections = await extractDocxText(buffer || filePath);
         content = sections.map((section) => ({
             pageNumber: null,
             heading: section.heading,
             text: section.text,
         }));
-    }
-
-    else if (extension === ".pdf") {
-        content = await extractPdfText(filePath);
-    }
-
-    else if (extension === ".txt") {
-        const text = await extractTxtText(filePath);
-
+    } else if (extension === ".pdf") {
+        content = await extractPdfText(buffer || filePath);
+    } else if (extension === ".txt") {
+        const text = await extractTxtText(buffer || filePath);
         content = [{
             pageNumber: null,
             heading: null,
             text,
         }];
-    }
-
-    else {
+    } else {
         throw new Error("Unsupported file format");
     }
 
     return {
-        fileName: path.basename(filePath),
+        fileName,
         fileType: extension.substring(1),
         totalPages: extension === ".pdf" ? content.length : null,
         content,
     };
 };
 
-
-
-module.exports = { extractDocxText, extractPdfText, extractTxtText, processDocument };
+module.exports = {
+    extractDocxText,
+    extractPdfText,
+    extractTxtText,
+    processDocument,
+};

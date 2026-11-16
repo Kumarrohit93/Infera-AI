@@ -6,23 +6,34 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
 });
 
-// Gemini model used for answer generation.
 const MODEL_NAME = "gemini-2.5-flash";
+const MAX_RETRIES = 3;
+
+// Check whether the error is temporary and retryable.
+const isRetryableError = (error) => {
+    const message = String(error.message || "");
+
+    return (
+        /\b(429|500|502|503|504)\b/.test(message) ||
+        /UNAVAILABLE|RESOURCE_EXHAUSTED|fetch failed|ECONNRESET|ETIMEDOUT/i.test(message)
+    );
+};
+
+// Wait before retrying.
+const delay = (ms) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate an answer with citations using retrieved document context.
 const generateAnswer = async ({ question, context }) => {
-    try {
-        // Validate the question and context.
-        if (!question || !question.trim()) {
-            throw new Error("Question cannot be empty");
-        }
+    if (!question || !question.trim()) {
+        throw new Error("Question cannot be empty");
+    }
 
-        if (!context || !context.trim()) {
-            throw new Error("Context cannot be empty");
-        }
+    if (!context || !context.trim()) {
+        throw new Error("Context cannot be empty");
+    }
 
-        // Ask Gemini to generate answers with source citations.
-        const prompt = `
+    const prompt = `
 You are an AI assistant for an enterprise knowledge base.
 
 Answer the user's question using ONLY the provided document context.
@@ -48,21 +59,38 @@ ${question}
 ANSWER:
 `;
 
-        // Generate the answer using Gemini.
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-        });
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`Gemini generation attempt: ${attempt + 1}`);
 
-        const answer = response.text;
+            const response = await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+            });
 
-        if (!answer || !answer.trim()) {
-            throw new Error("Gemini returned an empty response");
+            const answer = response.text;
+
+            if (!answer || !answer.trim()) {
+                throw new Error("Gemini returned an empty response");
+            }
+
+            return answer.trim();
+
+        } catch (error) {
+            if (attempt === MAX_RETRIES || !isRetryableError(error)) {
+                throw new Error(
+                    `Gemini Answer Generation Error: ${error.message}`
+                );
+            }
+
+            const waitTime = 2000 * Math.pow(2, attempt);
+
+            console.log(
+                `Gemini temporarily unavailable. Retrying in ${waitTime / 1000} seconds...`
+            );
+
+            await delay(waitTime);
         }
-
-        return answer.trim();
-    } catch (error) {
-        throw new Error(`Gemini Answer Generation Error: ${error.message}`);
     }
 };
 

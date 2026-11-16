@@ -1,19 +1,25 @@
-
 const { generateEmbedding } = require("./EmbeddingService");
-const { searchSimilarChunks } = require("../Repositories/SearchRepository");
+const {
+    searchSimilarChunks,
+    countAuthorizedDocuments,
+} = require("../Repositories/SearchRepository");
 const { buildContext } = require("./ContextBuilder");
 const { generateAnswer } = require("./LLMService");
 const { validateCitations } = require("./CitationValidator");
 
-// Search documents and generate an answer with validated citations.
+/**
+ * Search documents across multiple authorized documents and generate an answer with validated citations.
+ */
 const searchDocuments = async ({
     query,
     organizationId,
+    userId,
+    role,
     limit = 5,
     minSimilarity = 0.50,
 }) => {
     try {
-        // Validate the user's question and organization.
+        // Validate user's question and organization.
         if (!query || typeof query !== "string" || !query.trim()) {
             throw new Error("Search query cannot be empty");
         }
@@ -22,21 +28,48 @@ const searchDocuments = async ({
             throw new Error("Organization ID is required");
         }
 
+        const effectiveRole = role || (userId ? "member" : "admin");
+
+        // Check if the user has any authorized, ready documents in the organization.
+        const authorizedCount = await countAuthorizedDocuments({
+            organizationId,
+            userId,
+            role: effectiveRole,
+        });
+
+        if (authorizedCount === 0) {
+            return {
+                query: query.trim(),
+                answer: effectiveRole === "admin"
+                    ? "No documents are currently indexed and ready in this organization."
+                    : "You do not have access to any documents in this organization. Please contact your administrator.",
+                totalResults: 0,
+                sources: [],
+                citationValidation: {
+                    isValid: true,
+                    usedCitations: [],
+                    invalidCitations: [],
+                },
+            };
+        }
+
         // Generate an embedding for the user's question.
         const queryEmbedding = await generateEmbedding(
             query.trim(),
             "RETRIEVAL_QUERY"
         );
 
-        // Retrieve relevant document chunks.
+        // Retrieve relevant document chunks across authorized documents.
         const results = await searchSimilarChunks({
             organizationId,
+            userId,
+            role: effectiveRole,
             queryEmbedding,
             limit,
             minSimilarity,
         });
 
-        // Return a fallback when no relevant chunks are found.
+        // Return a fallback when no relevant chunks match the similarity threshold.
         if (results.length === 0) {
             return {
                 query: query.trim(),
@@ -51,7 +84,7 @@ const searchDocuments = async ({
             };
         }
 
-        // Build document context and source references.
+        // Build combined multi-document context and source references.
         const { context, sources } = buildContext(results);
 
         // Generate an answer using the retrieved context.
