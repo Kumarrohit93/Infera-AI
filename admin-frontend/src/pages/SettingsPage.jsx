@@ -15,6 +15,86 @@ import {
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+const SETTINGS_STORAGE_KEY = 'infera_admin_settings_v1';
+
+const DEFAULT_ORG = {
+  name: 'Infera Enterprise Solutions Pvt. Ltd.',
+  domain: 'infera.ai',
+  logoName: 'Infera_AI_logo_vector.svg',
+  logoPreview: null
+};
+
+const DEFAULT_AI = {
+  provider: 'OpenAI Enterprise',
+  model: 'gpt-4o (128k Context)',
+  temperature: 0.2,
+  topK: 4,
+  chunkSize: 800,
+  embeddingModel: 'text-embedding-3-large',
+  strictGrounding: true
+};
+
+const DEFAULT_PERMISSIONS = {
+  viewExcerpts: true,
+  allowDownloads: true,
+  autoAssignGeneral: true,
+  enforce2FA: true,
+  defaultFolderAccess: 'Restricted (Explicit Member Selection)'
+};
+
+const DEFAULT_INTEGRATIONS = [
+  {
+    id: 'gdrive',
+    name: 'Google Drive Workspace',
+    status: 'Connected',
+    description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
+    actionText: 'Disconnect',
+    actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
+  },
+  {
+    id: 'slack',
+    name: 'Slack Knowledge Bot',
+    status: 'Connected',
+    description: 'Allow team members to query @InferaAI directly inside Slack channels.',
+    actionText: 'Configure',
+    actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
+  },
+  {
+    id: 'notion',
+    name: 'Notion Internal Wiki',
+    status: 'Available',
+    description: 'Ingest engineering handbooks and operational SOP pages automatically.',
+    actionText: 'Connect',
+    actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+  },
+  {
+    id: 'sharepoint',
+    name: 'Microsoft SharePoint',
+    status: 'Available',
+    description: 'Enterprise connector for legal and compliance document libraries.',
+    actionText: 'Connect',
+    actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+  }
+];
+
+const DEFAULT_PROFILE = {
+  name: 'Jiya Sharma',
+  email: 'jiyasharma@infera.ai',
+  role: 'Workspace Admin',
+  currentPassword: '',
+  newPassword: ''
+};
+
+function loadSavedSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 const TABS = [
   { id: 'organization', label: 'Organization', icon: Building2 },
   { id: 'ai-model', label: 'AI & Model', icon: Cpu },
@@ -30,83 +110,67 @@ export default function SettingsPage() {
   const logoGradId = useId();
   const [activeTab, setActiveTab] = useState('organization');
 
+  const [savedInitial] = useState(() => loadSavedSettings());
+
   // Tab 1: Organization State
-  const [orgData, setOrgData] = useState({
-    name: 'Infera Enterprise Solutions Pvt. Ltd.',
-    domain: 'infera.ai',
-    logoName: 'Infera_AI_logo_vector.svg',
-    logoPreview: null
-  });
+  const [orgData, setOrgData] = useState(() => ({
+    ...DEFAULT_ORG,
+    ...(savedInitial?.orgData || {})
+  }));
 
   // Tab 2: AI & Model State
-  const [aiData, setAiData] = useState({
-    provider: 'OpenAI Enterprise',
-    model: 'gpt-4o (128k Context)',
-    temperature: 0.2,
-    topK: 4,
-    chunkSize: 800,
-    embeddingModel: 'text-embedding-3-large',
-    strictGrounding: true
-  });
+  const [aiData, setAiData] = useState(() => ({
+    ...DEFAULT_AI,
+    ...(savedInitial?.aiData || {})
+  }));
 
   // Tab 3: Access & Permissions State
-  const [permissions, setPermissions] = useState({
-    viewExcerpts: true,
-    allowDownloads: true,
-    autoAssignGeneral: true,
-    enforce2FA: true,
-    defaultFolderAccess: 'Restricted (Explicit Member Selection)'
-  });
+  const [permissions, setPermissions] = useState(() => ({
+    ...DEFAULT_PERMISSIONS,
+    ...(savedInitial?.permissions || {})
+  }));
 
   // Tab 4: Integrations State
-  const [integrations, setIntegrations] = useState([
-    {
-      id: 'gdrive',
-      name: 'Google Drive Workspace',
-      status: 'Connected',
-      description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
-      actionText: 'Disconnect',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
-    },
-    {
-      id: 'slack',
-      name: 'Slack Knowledge Bot',
-      status: 'Connected',
-      description: 'Allow team members to query @InferaAI directly inside Slack channels.',
-      actionText: 'Configure',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
-    },
-    {
-      id: 'notion',
-      name: 'Notion Internal Wiki',
-      status: 'Available',
-      description: 'Ingest engineering handbooks and operational SOP pages automatically.',
-      actionText: 'Connect',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    },
-    {
-      id: 'sharepoint',
-      name: 'Microsoft SharePoint',
-      status: 'Available',
-      description: 'Enterprise connector for legal and compliance document libraries.',
-      actionText: 'Connect',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    }
-  ]);
+  const [integrations, setIntegrations] = useState(() =>
+    Array.isArray(savedInitial?.integrations)
+      ? savedInitial.integrations
+      : DEFAULT_INTEGRATIONS
+  );
 
   // Tab 5: General / Admin Profile State
-  const [profileData, setProfileData] = useState({
-    name: 'Jiya Sharma',
-    email: 'jiyasharma@infera.ai',
-    role: 'Workspace Admin',
+  const [profileData, setProfileData] = useState(() => ({
+    ...DEFAULT_PROFILE,
+    ...(savedInitial?.profileData || {}),
     currentPassword: '',
     newPassword: ''
-  });
+  }));
+
+  const persistSettings = (overrides = {}) => {
+    try {
+      const nextProfile = {
+        name: (overrides.profileData ?? profileData).name,
+        email: (overrides.profileData ?? profileData).email,
+        role: (overrides.profileData ?? profileData).role
+      };
+      const payload = {
+        orgData: overrides.orgData ?? orgData,
+        aiData: overrides.aiData ?? aiData,
+        permissions: overrides.permissions ?? permissions,
+        integrations: overrides.integrations ?? integrations,
+        profileData: nextProfile
+      };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+      queryClient.setQueryData(['adminProfile'], nextProfile);
+    } catch {
+      // Ignore storage quota errors
+    }
+  };
 
   // TanStack Mutation for saving settings
   const saveSettingsMutation = useMutation({
     mutationFn: async (message) => {
-      // In real backend, this will call PATCH /api/organizations/current
+      // Persist locally until PATCH /api/organizations/current is connected
+      persistSettings();
       return message;
     },
     onSuccess: (message) => {
@@ -126,18 +190,50 @@ export default function SettingsPage() {
       toast.error('Logo file must be under 2MB.');
       return;
     }
-    const previewUrl = URL.createObjectURL(file);
-    setOrgData((prev) => ({
-      ...prev,
-      logoName: file.name,
-      logoPreview: previewUrl
-    }));
-    toast.success(`Logo "${file.name}" selected.`);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const updatedOrg = {
+        ...orgData,
+        logoName: file.name,
+        logoPreview: typeof reader.result === 'string' ? reader.result : null
+      };
+      setOrgData(updatedOrg);
+      persistSettings({ orgData: updatedOrg });
+      toast.success(`Logo "${file.name}" uploaded.`);
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  const handleIntegrationAction = (item) => {
+    if (item.actionText === 'Configure') {
+      toast.success(`${item.name} is connected and active.`);
+      return;
+    }
+
+    const willConnect = item.status !== 'Connected';
+    const updatedList = integrations.map((intItem) =>
+      intItem.id === item.id
+        ? {
+            ...intItem,
+            status: willConnect ? 'Connected' : 'Available',
+            actionText: willConnect ? 'Disconnect' : 'Connect',
+            actionStyle: willConnect
+              ? 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
+              : 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+          }
+        : intItem
+    );
+
+    setIntegrations(updatedList);
+    persistSettings({ integrations: updatedList });
+    toast.success(`${item.name} ${willConnect ? 'connected' : 'disconnected'}.`);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('isAdminAuth');
+    localStorage.removeItem('accessToken');
     toast.success('Logged out successfully.');
     navigate('/login', { replace: true });
   };
@@ -626,7 +722,7 @@ export default function SettingsPage() {
                       <div className="flex justify-end pt-3 border-t border-[#E8DCD1]">
                         <button
                           type="button"
-                          onClick={() => toast.success(`${item.name} configuration clicked.`)}
+                          onClick={() => handleIntegrationAction(item)}
                           className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
                         >
                           {item.actionText}
