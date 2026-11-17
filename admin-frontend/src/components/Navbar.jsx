@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -10,7 +11,10 @@ import {
   CheckCheck,
   X,
   Settings,
-  LogOut
+  LogOut,
+  FileText,
+  Folder,
+  Users
 } from 'lucide-react';
 
 const PAGE_META = {
@@ -27,6 +31,7 @@ const PAGE_META = {
 export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -34,8 +39,38 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileSearchActive, setMobileSearchActive] = useState(false);
 
+  const searchRef = useRef(null);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  // Subscribe to existing TanStack Query caches without triggering extra fetches
+  const { data: documents = [] } = useQuery({
+    queryKey: ['documents', 'All'],
+    queryFn: () => queryClient.getQueryData(['documents', 'All']) ?? [],
+    initialData: () => queryClient.getQueryData(['documents', 'All']) ?? [],
+    enabled: false
+  });
+
+  const { data: folders = [] } = useQuery({
+    queryKey: ['folders'],
+    queryFn: () => queryClient.getQueryData(['folders']) ?? [],
+    initialData: () => queryClient.getQueryData(['folders']) ?? [],
+    enabled: false
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ['members'],
+    queryFn: () => queryClient.getQueryData(['members']) ?? [],
+    initialData: () => queryClient.getQueryData(['members']) ?? [],
+    enabled: false
+  });
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ['employees'],
+    queryFn: () => queryClient.getQueryData(['employees']) ?? [],
+    initialData: () => queryClient.getQueryData(['employees']) ?? [],
+    enabled: false
+  });
 
   const [notifications, setNotifications] = useState([
     {
@@ -57,9 +92,61 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
   const currentMeta = PAGE_META[location.pathname] || { title: 'Dashboard', subtitle: '' };
 
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return { documents: [], folders: [], people: [], total: 0 };
+    }
+
+    const matchedDocs = documents
+      .filter((doc) => {
+        const name = (doc.name || doc.title || '').toLowerCase();
+        const folder = (doc.folder || doc.department || '').toLowerCase();
+        return name.includes(q) || folder.includes(q);
+      })
+      .slice(0, 4);
+
+    const matchedFolders = folders
+      .filter((folder) => {
+        const name = (folder.name || '').toLowerCase();
+        const dept = (folder.department || '').toLowerCase();
+        return name.includes(q) || dept.includes(q);
+      })
+      .slice(0, 4);
+
+    const matchedMembers = members.map((m) => ({ ...m, _source: 'member' }));
+    const matchedEmployees = employees.map((emp) => ({ ...emp, _source: 'employee' }));
+    const matchedPeople = [...matchedMembers, ...matchedEmployees]
+      .filter((person) => {
+        const name = (person.name || person.fullName || '').toLowerCase();
+        const email = (person.email || '').toLowerCase();
+        const dept = (person.department || '').toLowerCase();
+        const empId = (person.employeeId || '').toLowerCase();
+        return name.includes(q) || email.includes(q) || dept.includes(q) || empId.includes(q);
+      })
+      .slice(0, 4);
+
+    return {
+      documents: matchedDocs,
+      folders: matchedFolders,
+      people: matchedPeople,
+      total: matchedDocs.length + matchedFolders.length + matchedPeople.length
+    };
+  }, [searchQuery, documents, folders, members, employees]);
+
+  const handleSelectSearchResult = (path) => {
+    setShowSearchDropdown(false);
+    setMobileSearchActive(false);
+    setSearchQuery('');
+    navigate(path);
+  };
+
   // Close popovers on outside click & Escape
   useEffect(() => {
     const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSearchDropdown(false);
+      }
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotifications(false);
       }
@@ -70,6 +157,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
+        setShowSearchDropdown(false);
         setShowNotifications(false);
         setShowProfileMenu(false);
         setMobileSearchActive(false);
@@ -98,6 +186,117 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
     }
   };
 
+  const renderSearchDropdown = () => {
+    if (!searchQuery.trim()) return null;
+
+    return (
+      <div className="max-h-80 overflow-y-auto custom-sidebar-scroll divide-y divide-[#E8DCD1]">
+        {searchResults.total === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <p className="text-xs font-semibold text-[#25211E]">No matches found</p>
+            <p className="text-[11px] text-[#77716B] mt-0.5">
+              Try searching another document, folder, or member name.
+            </p>
+          </div>
+        ) : (
+          <>
+            {searchResults.documents.length > 0 && (
+              <div className="p-2">
+                <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
+                  Documents
+                </p>
+                {searchResults.documents.map((doc, idx) => (
+                  <button
+                    key={doc.id || doc._id || `doc-${idx}`}
+                    type="button"
+                    onClick={() => handleSelectSearchResult('/documents')}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-left hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-[8px] bg-[#F3E8DC] text-[#96613F] flex items-center justify-center shrink-0">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-[#25211E] truncate">
+                        {doc.name || doc.title}
+                      </p>
+                      {(doc.folder || doc.department) && (
+                        <p className="text-[11px] text-[#77716B] truncate">
+                          {doc.folder || doc.department}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {searchResults.folders.length > 0 && (
+              <div className="p-2">
+                <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
+                  Folders
+                </p>
+                {searchResults.folders.map((folder, idx) => (
+                  <button
+                    key={folder.id || folder._id || `folder-${idx}`}
+                    type="button"
+                    onClick={() => handleSelectSearchResult('/folders')}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-left hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-[8px] bg-[#F3E8DC] text-[#96613F] flex items-center justify-center shrink-0">
+                      <Folder className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-[#25211E] truncate">
+                        {folder.name}
+                      </p>
+                      {folder.department && (
+                        <p className="text-[11px] text-[#77716B] truncate">
+                          {folder.department}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {searchResults.people.length > 0 && (
+              <div className="p-2">
+                <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
+                  Members & Employees
+                </p>
+                {searchResults.people.map((person, idx) => (
+                  <button
+                    key={person.id || person._id || `person-${idx}`}
+                    type="button"
+                    onClick={() =>
+                      handleSelectSearchResult(
+                        person._source === 'employee' ? '/add-member' : '/members'
+                      )
+                    }
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[8px] text-left hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-[8px] bg-[#F3E8DC] text-[#96613F] flex items-center justify-center shrink-0">
+                      <Users className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-[#25211E] truncate">
+                        {person.name || person.fullName}
+                      </p>
+                      <p className="text-[11px] text-[#77716B] truncate">
+                        {[person.department, person.email].filter(Boolean).join(' • ')}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <header className="h-16 bg-[#FFFFFF]/90 backdrop-blur-md border-b border-[#E8DCD1] px-3.5 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-30 transition-all duration-200">
       {/* Mobile Search Overlay when active */}
@@ -116,7 +315,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents, folders..."
+              placeholder="Search documents, folders, or members..."
               className="flex-1 py-2 text-xs bg-transparent focus:outline-none text-[#25211E]"
             />
             <button
@@ -129,6 +328,12 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
             >
               <X className="w-4 h-4" />
             </button>
+
+            {searchQuery.trim() && (
+              <div className="absolute left-0 right-0 top-16 bg-[#FFFFFF]/95 backdrop-blur-md border-b border-[#E8DCD1] shadow-xl z-50">
+                {renderSearchDropdown()}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -166,19 +371,46 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       </div>
 
       {/* Center: Desktop Global Search Bar */}
-      <div className="relative flex-1 max-w-xs md:max-w-md hidden md:block">
+      <div ref={searchRef} className="relative flex-1 max-w-xs md:max-w-md hidden md:block">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-[#77716B] absolute left-3.5 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onFocus={() => setShowSearchDropdown(true)}
-            onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowSearchDropdown(true);
+            }}
             placeholder="Search documents, folders, or members..."
-            className="w-full pl-9 pr-3.5 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/10 transition-all duration-200"
+            className="w-full pl-9 pr-8 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-xs sm:text-sm text-[#25211E] placeholder-[#77716B] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/10 transition-all duration-200"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2.5 p-1 rounded-md text-[#77716B] hover:text-[#25211E] hover:bg-[#F3E8DC]/60 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+
+        <AnimatePresence>
+          {showSearchDropdown && searchQuery.trim() && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              style={{ transformOrigin: 'top center' }}
+              className="absolute left-0 right-0 mt-2 bg-[#FFFFFF]/95 backdrop-blur-md border border-[#E8DCD1] rounded-[12px] shadow-xl z-50 overflow-hidden"
+            >
+              {renderSearchDropdown()}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Right Controls */}
