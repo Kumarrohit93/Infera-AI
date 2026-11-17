@@ -17,10 +17,18 @@ export default function Sidebar({ onClose }) {
     navigate("/");
   };
 
+  // Function to handle link clicks based on screen size
+  const handleNavClick = () => {
+    // Agar screen mobile/tablet ki hai (< 1024px), tabhi sidebar close hoga
+    if (window.innerWidth < 1024) {
+      onClose?.();
+    }
+  };
+
   return (
     <aside className="flex h-dvh w-64 flex-col justify-between border-r border-[#D7A781]/30 bg-[#722F37] text-white shadow-2xl">
       <div>
-        {/* Brand Header with Logo Button to Toggle/Close */}
+        {/* Brand Header with Logo Button & Close Cross (Always closes on click) */}
         <div className="flex h-20 items-center justify-between px-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <button
@@ -51,7 +59,7 @@ export default function Sidebar({ onClose }) {
           </button>
         </div>
 
-        {/* Navigation Links with onClick={onClose} added */}
+        {/* Navigation Links */}
         <nav className="space-y-1.5 px-4 py-6">
           {navItems.map((item) => {
             const IconComponent = item.icon;
@@ -59,7 +67,7 @@ export default function Sidebar({ onClose }) {
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={onClose} // <-- Yeh line ensure karegi ki link click hote hi sidebar close ho jaye
+                onClick={handleNavClick} // Screen size check karega
                 className={({ isActive }) =>
                   `flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
