@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login as authenticateMember } from "../services/authService";
+import {
+  login as authenticateMember,
+  requestPasswordReset,
+} from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,6 +20,7 @@ export default function Login() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,15 +51,15 @@ export default function Login() {
     }
   };
 
-  const handleForgotSubmit = (e) => {
+  const handleForgotSubmit = async (e) => {
     e.preventDefault();
     if (resetEmail) {
-      setResetSent(true);
-      setTimeout(() => {
-        setResetSent(false);
-        setShowForgotModal(false);
-        setResetEmail("");
-      }, 3000);
+      try {
+        await requestPasswordReset(resetEmail.trim().toLowerCase());
+        setResetSent(true);
+      } catch (error) {
+        setResetError(error.message || "Could not request a password reset.");
+      }
     }
   };
 
@@ -423,6 +427,7 @@ export default function Login() {
                     className="w-full h-12 rounded-xl border-2 border-gray-200 px-4 text-sm text-[#722F37] outline-none focus:border-[#D7A781]"
                   />
                 </div>
+                {resetError && <p role="alert" className="text-sm text-red-700">{resetError}</p>}
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"

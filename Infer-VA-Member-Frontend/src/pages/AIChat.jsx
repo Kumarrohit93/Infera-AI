@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { getStoredUser } from "../services/authService";
 import { documentService } from "../services/documentService";
@@ -44,6 +44,8 @@ export default function AIChat() {
             sender: message.role === "user" ? "user" : "ai",
             text: message.content,
             sources: message.sources || [],
+            feedback: message.feedback || null,
+            persisted: message.role === "assistant",
           }))
         );
       })
@@ -79,33 +81,82 @@ export default function AIChat() {
     ]);
     setInput("");
     setIsLoading(true);
+    const assistantId = `assistant-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        sender: "ai",
+        text: "",
+        sources: [],
+        persisted: false,
+      },
+    ]);
 
     try {
-      const response = await documentService.askQuestion({
+      const response = await documentService.askQuestionStream({
         question: userText,
         conversationId,
+        onEvent(eventName, data) {
+          if (eventName === "start") setConversationId(data.conversationId);
+          if (eventName === "sources") {
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? { ...message, sources: data.sources || [] }
+                : message
+            ));
+          }
+          if (eventName === "token") {
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? { ...message, text: message.text + data.token }
+                : message
+            ));
+          }
+          if (eventName === "done") {
+            setConversationId(data.conversationId);
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    text: data.answer,
+                    sources: data.sources || [],
+                    messageId: data.messageId,
+                    persisted: true,
+                  }
+                : message
+            ));
+          }
+        },
       });
       setConversationId(response.conversationId);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          sender: "ai",
-          text: response.answer || "The RAG service returned an empty answer.",
-          sources: response.sources || [],
-        },
-      ]);
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          sender: "ai",
-          text: `I couldn't retrieve an answer: ${error.message}`,
-        },
-      ]);
+      setMessages((current) => current.map((message) =>
+        message.id === assistantId
+          ? {
+              ...message,
+              text: `I couldn't retrieve an answer: ${error.message}`,
+            }
+          : message
+      ));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFeedback = async (messageId, helpful) => {
+    try {
+      await documentService.submitFeedback(messageId, { helpful });
+      setMessages((current) => current.map((message) =>
+        message.id === messageId
+          ? { ...message, feedback: helpful ? "Helpful" : "Not Helpful" }
+          : message
+      ));
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        { id: `feedback-error-${Date.now()}`, sender: "ai", text: error.message },
+      ]);
     }
   };
 
@@ -158,6 +209,29 @@ export default function AIChat() {
                     </li>
                   ))}
                 </ul>
+              )}
+              {msg.sender === "ai" && msg.persisted && (
+                <div className="mt-2 flex items-center gap-2 border-t border-[#D7A781]/30 pt-2">
+                  <button
+                    type="button"
+                    aria-label="Rate answer helpful"
+                    title="Helpful"
+                    onClick={() => handleFeedback(msg.messageId || msg.id, true)}
+                    className={`rounded p-1 ${msg.feedback === "Helpful" ? "bg-green-100 text-green-800" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Rate answer not helpful"
+                    title="Not helpful"
+                    onClick={() => handleFeedback(msg.messageId || msg.id, false)}
+                    className={`rounded p-1 ${msg.feedback === "Not Helpful" ? "bg-red-100 text-red-800" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </button>
+                  {msg.feedback && <span className="text-xs text-gray-500">Thanks for your feedback</span>}
+                </div>
               )}
             </div>
           </div>

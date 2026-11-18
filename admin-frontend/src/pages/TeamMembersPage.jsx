@@ -454,7 +454,7 @@ export default function TeamMembersPage() {
                           className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] font-medium focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
                         />
                         <p className="mt-1.5 text-[11px] text-[#77716B]">
-                          The backend records a pending invitation, but email delivery and the member acceptance screen are not configured yet.
+                          An invitation email will be sent with a one-time link that expires after seven days.
                         </p>
                       </div>
                     )}

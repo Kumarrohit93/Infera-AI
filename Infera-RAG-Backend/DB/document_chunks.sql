@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- RAG ke liye extracted text chunks + vector embeddings.
--- VECTOR(1536) OpenAI text-embedding-3-small ke default dimensions ke liye hai.
+-- Gemini embeddings use 1536 dimensions to match the configured model output.
 -- Normalized schema: folder authorization is resolved via documents table to prevent desync.
 CREATE TABLE IF NOT EXISTS document_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     page_number INTEGER CHECK (page_number IS NULL OR page_number > 0),
     heading TEXT,
     token_count INTEGER CHECK (token_count IS NULL OR token_count >= 0),
-    embedding VECTOR(3072),
+    embedding VECTOR(1536),
+    search_text TSVECTOR GENERATED ALWAYS AS (
+        to_tsvector('simple'::regconfig, chunk_text)
+    ) STORED,
     embedding_model VARCHAR(100) NOT NULL DEFAULT 'gemini-embedding-001',
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -28,12 +31,19 @@ CREATE TABLE IF NOT EXISTS document_chunks (
         ON DELETE CASCADE
 );
 
+ALTER TABLE document_chunks
+    ADD COLUMN IF NOT EXISTS search_text TSVECTOR
+    GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, chunk_text)) STORED;
+
 CREATE INDEX IF NOT EXISTS idx_chunks_org_document
     ON document_chunks(organization_id, document_id);
 
 -- Tenant filter ke liye organization index
 CREATE INDEX IF NOT EXISTS idx_chunks_org
     ON document_chunks(organization_id);
+
+CREATE INDEX IF NOT EXISTS idx_document_chunks_search_text
+    ON document_chunks USING GIN(search_text);
 
 -- Cosine-distance HNSW index. Embeddings insert karne ke baad vector search fast hoga.
 CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding_hnsw

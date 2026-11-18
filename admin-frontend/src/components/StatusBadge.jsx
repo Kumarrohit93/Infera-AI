@@ -31,6 +31,12 @@ export default function StatusBadge({ status, size = 'sm', animate = true }) {
       icon: Clock,
       spin: false
     },
+    queued: {
+      bg: 'bg-[#FBF5E8] text-[#9A6B26] border-[#EBDDCA]',
+      dot: 'bg-[#9A6B26]',
+      icon: Clock,
+      spin: false
+    },
     failed: {
       bg: 'bg-[#FDF0EF] text-[#A83833] border-[#F3C9C6]',
       dot: 'bg-[#A83833]',

@@ -24,7 +24,11 @@ export default function AdminLayout({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((error) => console.error('Could not revoke the server session:', error));
     localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
     queryClient.clear();

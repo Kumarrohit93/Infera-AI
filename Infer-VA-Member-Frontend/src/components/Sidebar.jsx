@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, FolderKanban, MessageSquare, History, Settings, LogOut } from "lucide-react";
+import { logout } from "../services/authService";
 
 export default function Sidebar({ onClose }) {
   const navigate = useNavigate();
@@ -12,9 +13,14 @@ export default function Sidebar({ onClose }) {
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Could not revoke the server session:", error);
+    } finally {
+      navigate("/");
+    }
   };
 
   // Function to handle link clicks based on screen size

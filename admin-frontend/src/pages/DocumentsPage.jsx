@@ -46,6 +46,7 @@ export default function DocumentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const fileInputRef = useRef(null);
+  const versionInputRef = useRef(null);
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +83,11 @@ export default function DocumentsPage() {
     },
     refetchOnWindowFocus: false,
     refetchInterval: (query) =>
-      query.state.data?.some((document) => document.status.toLowerCase() === 'processing')
+      query.state.data?.some((document) =>
+        ['queued', 'processing'].includes(
+          (document.processingStatus || document.status).toLowerCase()
+        )
+      )
         ? 2000
         : false,
     retry: false,
@@ -131,7 +136,26 @@ export default function DocumentsPage() {
 
   // Inspect & Delete Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
+  const [versioningDoc, setVersioningDoc] = useState(null);
   const [docToDelete, setDocToDelete] = useState(null);
+  const {
+    data: documentVersions = [],
+    isError: versionsError,
+    error: versionsQueryError,
+  } = useQuery({
+    queryKey: ['document-versions', inspectingDoc?.id],
+    queryFn: () => documentApi.getVersions(inspectingDoc.id),
+    enabled: Boolean(inspectingDoc?.id),
+    refetchInterval: (query) =>
+      query.state.data?.some((version) =>
+        ['queued', 'processing'].includes(version.status)
+      ) ? 2000 : false,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (versionsError) toast.error(versionsQueryError?.message || 'Failed to load document versions.');
+  }, [versionsError, versionsQueryError]);
 
   // TanStack Mutation: Delete Document
   const deleteDocMutation = useMutation({
@@ -210,6 +234,28 @@ export default function DocumentsPage() {
   const handleFileSelect = (e) => {
     processFiles(e.target.files);
     e.target.value = '';
+  };
+
+  const handleVersionFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !versioningDoc) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      await documentApi.uploadVersion(versioningDoc.id, formData);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['documents'] }),
+        queryClient.invalidateQueries({ queryKey: ['document-versions', versioningDoc.id] }),
+      ]);
+      showTemporaryProcessingStatus([versioningDoc.id]);
+      toast.success('New version uploaded. It will become current after indexing.');
+    } catch (uploadError) {
+      toast.error(uploadError?.message || 'Could not upload this document version.');
+    } finally {
+      setVersioningDoc(null);
+    }
   };
 
   // Drag and Drop Handlers
@@ -303,6 +349,13 @@ export default function DocumentsPage() {
             multiple
             accept=".pdf,.docx,.txt"
             onChange={handleFileSelect}
+            className="hidden"
+          />
+          <input
+            ref={versionInputRef}
+            type="file"
+            accept=".pdf,.docx,.txt"
+            onChange={handleVersionFileSelect}
             className="hidden"
           />
 
@@ -431,6 +484,7 @@ export default function DocumentsPage() {
               className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
             >
               <option value="All">All Statuses</option>
+              <option value="Queued">Queued</option>
               <option value="Completed">Completed</option>
               <option value="Processing">Processing</option>
               <option value="Pending">Pending</option>
@@ -708,8 +762,40 @@ export default function DocumentsPage() {
                     <div>
                       <p className="font-bold text-[#25211E] mb-1">Indexing Pipeline Details:</p>
                       <p className="text-[#77716B] leading-relaxed">
-                        Chunk Size: 800 tokens • Overlap: 120 tokens • Model: text-embedding-3-large • Dimensions: 3,072
+                        Chunk Size: 800 tokens • Overlap: 120 tokens • Model: gemini-embedding-001 • Dimensions: 1,536
                       </p>
+                    </div>
+                    <div className="border-t border-[#E8DCD1] pt-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-bold text-[#25211E]">Version history</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVersioningDoc(inspectingDoc);
+                            versionInputRef.current?.click();
+                          }}
+                          className="rounded-lg bg-[#96613F] px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-[#4A3023]"
+                        >
+                          Upload new version
+                        </button>
+                      </div>
+                      <ul className="mt-2 max-h-32 space-y-2 overflow-y-auto">
+                        {documentVersions.map((version) => (
+                          <li
+                            key={version.id}
+                            className="flex items-center justify-between gap-3 rounded-lg bg-[#FAF7F2] px-3 py-2"
+                          >
+                            <span className="min-w-0 truncate">
+                              v{version.versionNumber} · {version.originalFilename}
+                              {version.isCurrent ? ' · Current' : ''}
+                            </span>
+                            <span className="shrink-0 capitalize text-[#77716B]">{version.status}</span>
+                          </li>
+                        ))}
+                        {documentVersions.length === 0 && (
+                          <li className="text-[#77716B]">No versions found.</li>
+                        )}
+                      </ul>
                     </div>
                   </div>
 

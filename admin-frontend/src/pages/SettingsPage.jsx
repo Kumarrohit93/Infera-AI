@@ -30,7 +30,7 @@ const DEFAULT_AI = {
   temperature: 0.2,
   topK: 4,
   chunkSize: 800,
-  embeddingModel: 'text-embedding-3-large',
+  embeddingModel: 'gemini-embedding-001',
   strictGrounding: true
 };
 
@@ -197,7 +197,11 @@ export default function SettingsPage() {
     e.target.value = '';
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((error) => console.error('Could not revoke the server session:', error));
     localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
     localStorage.removeItem('accessToken');
@@ -481,9 +485,9 @@ export default function SettingsPage() {
                     Embedding Model
                   </p>
                   <p className="text-xs font-bold text-[#25211E] mt-2">
-                    text-embedding-3-large
+                    gemini-embedding-001
                   </p>
-                  <p className="text-[11px] text-[#77716B] mt-0.5">3,072 dimensions • Active</p>
+                  <p className="text-[11px] text-[#77716B] mt-0.5">1,536 dimensions • Active</p>
                 </div>
               </div>
 

@@ -23,6 +23,7 @@ export default function ChatPage() {
   const [activeConvId, setActiveConvId] = useState(null);
   const [queryInput, setQueryInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState([]);
   const [activeCitation, setActiveCitation] = useState(null);
   const [convToDelete, setConvToDelete] = useState(null);
 
@@ -84,10 +85,40 @@ export default function ChatPage() {
 
     setQueryInput('');
     setIsGenerating(true);
+    const pendingId = `pending-${Date.now()}`;
+    setPendingMessages([
+      { id: `${pendingId}-user`, role: 'user', content: question },
+      { id: pendingId, role: 'assistant', content: '', sources: [] },
+    ]);
     try {
-      const result = await ragApi.askQuestion({
+      const result = await ragApi.askQuestionStream({
         question,
         ...(activeConvId ? { conversationId: activeConvId } : {}),
+        onEvent(eventName, data) {
+          if (eventName === 'start') setActiveConvId(data.conversationId);
+          if (eventName === 'sources') {
+            setPendingMessages((current) => current.map((message) =>
+              message.id === pendingId
+                ? { ...message, sources: data.sources || [] }
+                : message
+            ));
+          }
+          if (eventName === 'token') {
+            setPendingMessages((current) => current.map((message) =>
+              message.id === pendingId
+                ? { ...message, content: message.content + data.token }
+                : message
+            ));
+          }
+          if (eventName === 'done') {
+            setActiveConvId(data.conversationId);
+            setPendingMessages((current) => current.map((message) =>
+              message.id === pendingId
+                ? { ...message, content: data.answer, sources: data.sources || [] }
+                : message
+            ));
+          }
+        },
       });
       setActiveConvId(result.conversationId);
       await Promise.all([
@@ -96,8 +127,17 @@ export default function ChatPage() {
           queryKey: ['conversation-messages', result.conversationId],
         }),
       ]);
+      setPendingMessages([]);
     } catch (error) {
       setQueryInput(question);
+      setPendingMessages((current) => current.map((message) =>
+        message.id === pendingId
+          ? {
+              ...message,
+              content: error?.message || 'The assistant could not complete this request.',
+            }
+          : message
+      ));
       toast.error(error?.message || 'Failed to query the assistant.');
     } finally {
       setIsGenerating(false);
@@ -126,6 +166,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => setActiveConvId(null)}
+              disabled={isGenerating}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -161,6 +202,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={() => setActiveConvId(conversation.id)}
+                    disabled={isGenerating}
                     className="flex items-start gap-2 min-w-0 flex-1 text-left"
                   >
                     <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#96613F]" />
@@ -178,6 +220,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={() => setConvToDelete(conversation)}
+                    disabled={isGenerating}
                     aria-label={`Delete ${conversation.title}`}
                     title="Delete chat"
                     className="p-1 rounded-md text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF]"
@@ -203,7 +246,7 @@ export default function ChatPage() {
               <div className="h-full flex items-center justify-center text-xs text-[#77716B]">
                 Loading conversation...
               </div>
-            ) : messages.length === 0 ? (
+            ) : messages.length === 0 && pendingMessages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8 px-2">
                 <BookOpen className="w-10 h-10 text-[#96613F] mb-4" />
                 <h3 className="text-base sm:text-lg font-bold text-[#25211E]">
@@ -214,7 +257,7 @@ export default function ChatPage() {
                 </p>
               </div>
             ) : (
-              messages.map((message) => {
+              [...messages, ...pendingMessages].map((message) => {
                 const isUserMessage = message.role === 'user';
                 const citations = message.sources || [];
                 return (

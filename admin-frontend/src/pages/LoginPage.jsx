@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-// Auth service (Infera-Backend on port 9000). Override with VITE_AUTH_URL in admin-frontend/.env
+// Set VITE_AUTH_URL in the Vercel project environment.
 const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api';
 
 export default function LoginPage() {
@@ -52,6 +52,7 @@ export default function LoginPage() {
       const response = await fetch(`${AUTH_API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: trimmedEmail, password }),
       });
 
@@ -88,13 +89,27 @@ export default function LoginPage() {
   };
 
   // Forgot password submit
-  const handleForgotPassword = (e) => {
+  const handleForgotPassword = async (e) => {
     e.preventDefault();
     if (!resetEmail) {
       toast.error('Please enter your work email address.');
       return;
     }
-    toast.error('Password reset is not available because the backend has no reset endpoint yet.');
+    try {
+      const response = await fetch(`${AUTH_API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: resetEmail.trim().toLowerCase() }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error?.message || 'Could not request a password reset.');
+      }
+      setResetSent(true);
+    } catch (error) {
+      toast.error(error.message || 'Could not request a password reset.');
+    }
   };
 
   // 4 Feature highlight cards data

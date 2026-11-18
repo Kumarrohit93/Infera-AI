@@ -11,6 +11,7 @@ import TeamMembersPage from './pages/TeamMembersPage';
 import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
 import ChatPage from './pages/ChatPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // TanStack Query Client Configuration
 const queryClient = new QueryClient({
@@ -60,6 +61,7 @@ export default function App() {
               </PublicRoute>
             }
           />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             element={

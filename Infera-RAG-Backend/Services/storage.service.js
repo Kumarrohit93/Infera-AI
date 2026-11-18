@@ -38,4 +38,31 @@ function deleteFile(publicId) {
   })
 }
 
-module.exports = { uploadBuffer, deleteFile }
+async function downloadBuffer(publicId, format) {
+  const configurationError = getConfigurationError()
+  if (configurationError) throw configurationError
+
+  const url = cloudinary.utils.private_download_url(publicId, format, {
+    resource_type: "raw",
+    type: "authenticated",
+    expires_at: Math.floor(Date.now() / 1000) + 300,
+    attachment: false,
+  })
+  const response = await fetch(url, { signal: AbortSignal.timeout(60_000) })
+  if (!response.ok) {
+    throw new Error(`Cloudinary download failed with status ${response.status}`)
+  }
+
+  const contentLength = Number(response.headers.get("content-length") || 0)
+  if (contentLength > 20 * 1024 * 1024) {
+    throw new Error("Stored document exceeds the 20 MB processing limit")
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer())
+  if (buffer.length > 20 * 1024 * 1024) {
+    throw new Error("Stored document exceeds the 20 MB processing limit")
+  }
+  return buffer
+}
+
+module.exports = { uploadBuffer, downloadBuffer, deleteFile }

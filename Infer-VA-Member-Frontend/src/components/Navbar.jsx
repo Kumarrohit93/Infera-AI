@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Bell, ChevronDown, User, Settings, LogOut } from "lucide-react";
-import { getStoredUser, getUserInitials } from "../services/authService";
+import { getStoredUser, getUserInitials, logout } from "../services/authService";
 
 export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const [showNotif, setShowNotif] = useState(false);
@@ -95,7 +95,15 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
                 <Settings className="h-4 w-4" /> Settings
               </a>
               <button
-                onClick={() => { localStorage.clear(); window.location.href = "/"; }}
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch (error) {
+                    console.error("Could not revoke the server session:", error);
+                  } finally {
+                    window.location.href = "/";
+                  }
+                }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
               >
                 <LogOut className="h-4 w-4" /> Logout

@@ -2,6 +2,8 @@ const fs = require("fs")
 const path = require("path")
 const express = require("express")
 const cors = require("cors")
+const helmet = require("helmet")
+const { rateLimit } = require("express-rate-limit")
 const { pool, checkConnection } = require("./config/db")
 const authRoutes = require("./routes/auth.routes")
 const userRoutes = require("./routes/user.routes")
@@ -11,6 +13,15 @@ const organizationRoutes = require("./routes/organization.routes")
 const { notFound, errorHandler } = require("./middleware/errorHandler")
 const app = express()
 const port = process.env.PORT
+app.set("trust proxy", 1)
+app.use(helmet())
+
+const authLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+})
 
 const allowedOrigins = new Set(
   [
@@ -37,9 +48,22 @@ app.use(
   })
 )
 app.use(express.json())
+app.use("/api/auth/login", authLimit)
+app.use("/api/auth/forgot-password", authLimit)
+app.use("/api/auth/reset-password", authLimit)
+app.use("/api/auth/register-organization", authLimit)
 
 app.get("/", (req, res) => {
   res.send("Welcome To Infera AI!")
+})
+
+app.get("/health/ready", async (req, res, next) => {
+  try {
+    const connection = await checkConnection()
+    res.status(200).json({ success: true, database: connection.database })
+  } catch (error) {
+    next(error)
+  }
 })
 
 app.use("/api/auth", authRoutes)
@@ -59,6 +83,11 @@ async function startServer() {
       "utf8"
     )
     await pool.query(invitationSchema)
+    const securitySchema = fs.readFileSync(
+      path.join(__dirname, "db", "auth_security.sql"),
+      "utf8"
+    )
+    await pool.query(securitySchema)
 
     app.listen(port, () => {
       console.log(`Server is listening at port ${port}`)
