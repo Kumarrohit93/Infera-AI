@@ -87,11 +87,13 @@ async function getConversationMessages({ conversationId, organizationId, userId 
 
   // Get all messages
   const messageRows = await pool.query(
-    `SELECT id, role, content, created_at
+    `SELECT id, role, content, created_at,
+            (SELECT helpful FROM message_feedback
+              WHERE message_id = messages.id AND user_id = $3) AS feedback
      FROM messages
      WHERE conversation_id = $1 AND organization_id = $2
      ORDER BY created_at ASC`,
-    [conversationId, organizationId]
+    [conversationId, organizationId, userId]
   );
 
   // If no messages, return empty array
@@ -140,6 +142,9 @@ async function getConversationMessages({ conversationId, organizationId, userId 
     role: m.role,
     content: m.content,
     createdAt: m.created_at,
+    feedback: m.feedback === null || m.feedback === undefined
+      ? null
+      : m.feedback ? "Helpful" : "Not Helpful",
     sources: sourcesByMessage[m.id] || [],
   }));
 }

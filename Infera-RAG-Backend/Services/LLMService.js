@@ -23,8 +23,7 @@ const isRetryableError = (error) => {
 const delay = (ms) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
-// Generate an answer with citations using retrieved document context.
-const generateAnswer = async ({ question, context }) => {
+function buildPrompt({ question, context }) {
     if (!question || !question.trim()) {
         throw new Error("Question cannot be empty");
     }
@@ -33,7 +32,7 @@ const generateAnswer = async ({ question, context }) => {
         throw new Error("Context cannot be empty");
     }
 
-    const prompt = `
+    return `
 You are an AI assistant for an enterprise knowledge base.
 
 Answer the user's question using ONLY the provided document context.
@@ -58,6 +57,11 @@ ${question}
 
 ANSWER:
 `;
+}
+
+// Generate an answer with citations using retrieved document context.
+const generateAnswer = async ({ question, context }) => {
+    const prompt = buildPrompt({ question, context });
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
@@ -94,6 +98,44 @@ ANSWER:
     }
 };
 
+async function* generateAnswerStream({ question, context }) {
+    const prompt = buildPrompt({ question, context });
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        let receivedText = false;
+        try {
+            console.log(`Gemini streaming generation attempt: ${attempt + 1}`);
+            const response = await ai.models.generateContentStream({
+                model: MODEL_NAME,
+                contents: prompt,
+            });
+
+            for await (const part of response) {
+                const text = part.text || "";
+                if (!text) continue;
+                receivedText = true;
+                yield text;
+            }
+
+            if (!receivedText) {
+                throw new Error("Gemini returned an empty response");
+            }
+            return;
+        } catch (error) {
+            if (receivedText || attempt === MAX_RETRIES || !isRetryableError(error)) {
+                throw new Error(`Gemini Answer Generation Error: ${error.message}`);
+            }
+
+            const waitTime = 2000 * Math.pow(2, attempt);
+            console.log(
+                `Gemini temporarily unavailable. Retrying in ${waitTime / 1000} seconds...`
+            );
+            await delay(waitTime);
+        }
+    }
+}
+
 module.exports = {
     generateAnswer,
+    generateAnswerStream,
 };

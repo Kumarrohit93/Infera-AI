@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { User, Sparkles, Lock, Bell, Save, ShieldCheck, Database } from "lucide-react";
+import { getStoredUser } from "../services/authService";
 
 export default function Settings() {
+  const member = getStoredUser() || {};
   const [activeTab, setActiveTab] = useState("profile");
-  const [name, setName] = useState("Vibha Arora");
+  const [name, setName] = useState(member.name || "");
   const [responseStyle, setResponseStyle] = useState("concise");
   const [autoCitations, setAutoCitations] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -72,7 +74,7 @@ export default function Settings() {
                 <label className="block text-xs font-semibold text-[#722F37] mb-1">Assigned Email</label>
                 <input
                   type="email"
-                  value="member@infera.ai"
+                  value={member.email || ""}
                   disabled
                   className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 cursor-not-allowed"
                 />

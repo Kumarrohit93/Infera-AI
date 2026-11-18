@@ -10,9 +10,7 @@ const {
 
 const router = express.Router()
 
-// Phase 1: all routes are Admin only.
-// Phase 2 will let Members list the folders they are permitted to see.
-router.get("/", authenticate, requireRole("admin"), listFolders)
+router.get("/", authenticate, listFolders)
 router.post("/", authenticate, requireRole("admin"), createFolder)
 router.patch("/:id", authenticate, requireRole("admin"), updateFolder)
 router.delete("/:id", authenticate, requireRole("admin"), deleteFolder)

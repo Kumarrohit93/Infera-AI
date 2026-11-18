@@ -168,6 +168,16 @@ Create a `.env` file in the backend directory and configure the database connect
 
 Use the environment variable names expected by the backend source code.
 
+For document uploads, configure Cloudinary in `Infera-RAG-Backend/.env`:
+
+```env
+CLOUDINARY_CLOUD_NAME=<your-cloud-name>
+CLOUDINARY_API_KEY=<your-api-key>
+CLOUDINARY_API_SECRET=<your-api-secret>
+```
+
+Restart the RAG backend after adding these values. Keep the credentials private.
+
 **Important:** Never upload the `.env` file or secret credentials to GitHub.
 
 ### Step 6: Start the Backend

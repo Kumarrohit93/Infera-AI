@@ -1,47 +1,163 @@
-import { useState } from "react";
-import { Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { getStoredUser } from "../services/authService";
+import { documentService } from "../services/documentService";
+import MarkdownMessage from "../components/MarkdownMessage";
 
 export default function AIChat() {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: "ai",
-      text: "Hello Vibha! I am Infera AI. Ask me anything from your organisation's permitted documents.",
-    },
-  ]);
+  const memberName = getStoredUser()?.name || "there";
+  const location = useLocation();
+  const requestedConversationId = location.state?.conversationId || null;
+  const [messages, setMessages] = useState(() =>
+    requestedConversationId
+      ? []
+      : [
+          {
+            id: "welcome",
+            sender: "ai",
+            text: `Hello ${memberName}! I am Infera AI. Ask me anything from your organisation's permitted documents.`,
+          },
+        ]
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState(
+    requestedConversationId
+  );
+  const [loadedHistoryId, setLoadedHistoryId] = useState(null);
+  const isLoadingHistory =
+    Boolean(requestedConversationId) &&
+    loadedHistoryId !== requestedConversationId;
 
-  const getBotResponse = (userMsg) => {
-    const cleanMsg = userMsg.trim().toLowerCase();
-    const greetings = ["hi", "hii", "hiii", "hello", "hey", "good morning", "good afternoon"];
+  useEffect(() => {
+    if (!requestedConversationId) return undefined;
 
-    if (greetings.includes(cleanMsg)) {
-      return "Hello Vibha! 👋 How can I help you explore your workspace documents today?";
-    }
+    let active = true;
+    documentService
+      .getConversationMessages(requestedConversationId)
+      .then((history) => {
+        if (!active) return;
+        setMessages(
+          history.map((message) => ({
+            id: message.id,
+            sender: message.role === "user" ? "user" : "ai",
+            text: message.content,
+            sources: message.sources || [],
+            feedback: message.feedback || null,
+            persisted: message.role === "assistant",
+          }))
+        );
+      })
+      .catch((error) => {
+        if (active) {
+          setMessages([
+            {
+              id: `history-error-${Date.now()}`,
+              sender: "ai",
+              text: `Could not load this conversation: ${error.message}`,
+            },
+          ]);
+        }
+      })
+      .finally(() => {
+        if (active) setLoadedHistoryId(requestedConversationId);
+      });
 
-    if (cleanMsg.includes("how are you")) {
-      return "I'm operating at peak performance! What document or topic would you like to search today?";
-    }
+    return () => {
+      active = false;
+    };
+  }, [requestedConversationId]);
 
-    return `Based on your permitted workspace documents, here is the relevant analysis regarding "${userMsg}". (Connect backend RAG API for live database retrieval.)`;
-  };
-
-  const handleSend = (event) => {
+  const handleSend = async (event) => {
     event.preventDefault();
 
     const userText = input.trim();
-    if (!userText) return;
+    if (!userText || isLoading) return;
 
-    setMessages((prev) => [...prev, { id: Date.now(), sender: "user", text: userText }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, sender: "user", text: userText },
+    ]);
     setInput("");
     setIsLoading(true);
+    const assistantId = `assistant-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        sender: "ai",
+        text: "",
+        sources: [],
+        persisted: false,
+      },
+    ]);
 
-    setTimeout(() => {
-      const reply = getBotResponse(userText);
-      setMessages((prev) => [...prev, { id: Date.now() + 1, sender: "ai", text: reply }]);
+    try {
+      const response = await documentService.askQuestionStream({
+        question: userText,
+        conversationId,
+        onEvent(eventName, data) {
+          if (eventName === "start") setConversationId(data.conversationId);
+          if (eventName === "sources") {
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? { ...message, sources: data.sources || [] }
+                : message
+            ));
+          }
+          if (eventName === "token") {
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? { ...message, text: message.text + data.token }
+                : message
+            ));
+          }
+          if (eventName === "done") {
+            setConversationId(data.conversationId);
+            setMessages((current) => current.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    text: data.answer,
+                    sources: data.sources || [],
+                    messageId: data.messageId,
+                    persisted: true,
+                  }
+                : message
+            ));
+          }
+        },
+      });
+      setConversationId(response.conversationId);
+    } catch (error) {
+      setMessages((current) => current.map((message) =>
+        message.id === assistantId
+          ? {
+              ...message,
+              text: `I couldn't retrieve an answer: ${error.message}`,
+            }
+          : message
+      ));
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
+  };
+
+  const handleFeedback = async (messageId, helpful) => {
+    try {
+      await documentService.submitFeedback(messageId, { helpful });
+      setMessages((current) => current.map((message) =>
+        message.id === messageId
+          ? { ...message, feedback: helpful ? "Helpful" : "Not Helpful" }
+          : message
+      ));
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        { id: `feedback-error-${Date.now()}`, sender: "ai", text: error.message },
+      ]);
+    }
   };
 
   return (
@@ -61,6 +177,9 @@ export default function AIChat() {
 
       {/* Messages Area */}
       <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+        {isLoadingHistory && (
+          <p className="text-center text-sm text-gray-500">Loading conversation...</p>
+        )}
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
             {msg.sender === "ai" && (
@@ -76,7 +195,44 @@ export default function AIChat() {
                   : "bg-white text-[#722F37] border border-[#D7A781]/40"
               }`}
             >
-              {msg.text}
+              {msg.sender === "user" ? (
+                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+              ) : (
+                <MarkdownMessage content={msg.text} />
+              )}
+              {msg.sources?.length > 0 && (
+                <ul className="mt-2 list-inside list-disc border-t border-[#D7A781]/30 pt-2 text-xs">
+                  {msg.sources.map((source) => (
+                    <li key={`${msg.id}-${source.sourceId}`}>
+                      {source.documentName}
+                      {source.pageNumber ? ` · page ${source.pageNumber}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {msg.sender === "ai" && msg.persisted && (
+                <div className="mt-2 flex items-center gap-2 border-t border-[#D7A781]/30 pt-2">
+                  <button
+                    type="button"
+                    aria-label="Rate answer helpful"
+                    title="Helpful"
+                    onClick={() => handleFeedback(msg.messageId || msg.id, true)}
+                    className={`rounded p-1 ${msg.feedback === "Helpful" ? "bg-green-100 text-green-800" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Rate answer not helpful"
+                    title="Not helpful"
+                    onClick={() => handleFeedback(msg.messageId || msg.id, false)}
+                    className={`rounded p-1 ${msg.feedback === "Not Helpful" ? "bg-red-100 text-red-800" : "text-gray-500 hover:bg-gray-100"}`}
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </button>
+                  {msg.feedback && <span className="text-xs text-gray-500">Thanks for your feedback</span>}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -100,11 +256,13 @@ export default function AIChat() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          disabled={isLoading || isLoadingHistory}
           placeholder="Ask a question or say hello (e.g., 'Hi Infera')..."
           className="h-12 flex-1 rounded-xl border-2 border-[#D7A781]/50 bg-white px-4 text-sm text-[#722F37] outline-none focus:border-[#722F37]"
         />
         <button
           type="submit"
+          disabled={isLoading || isLoadingHistory || !input.trim()}
           className="flex h-12 items-center gap-2 rounded-xl bg-[#722F37] px-6 font-semibold text-white hover:bg-[#5B242C] transition shadow-md"
         >
           <span>Send</span>

@@ -1,7 +1,8 @@
   const bcrypt = require("bcryptjs")
 const { pool } = require("../config/db")
 const AppError = require("../utils/AppError")
-const { signAccessToken } = require("../utils/token")
+const { createSession } = require("./session.service")
+const { seedDefaultDepartments } = require("./department.service")
 
 async function registerOrganization({ organizationName, name, email, password }) {
   const passwordHash = await bcrypt.hash(password, 12)
@@ -14,6 +15,7 @@ async function registerOrganization({ organizationName, name, email, password })
       "INSERT INTO organizations (name) VALUES ($1) RETURNING id, name",
       [organizationName]
     )
+    await seedDefaultDepartments(client, org.rows[0].id)
     const user = await client.query(
       "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email",
       [name, email.toLowerCase(), passwordHash]
@@ -58,22 +60,13 @@ async function login({ email, password }) {
     throw new AppError(403, "FORBIDDEN", "Your account is not active in this organization")
   }
 
-  const accessToken = signAccessToken({
-    userId: row.id,
-    organizationId: row.organization_id,
+  return createSession({
+    id: row.id,
+    name: row.name,
+    email: row.email,
     role: row.role,
+    organizationId: row.organization_id,
   })
-
-  return {
-    accessToken,
-    user: {
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      role: row.role,
-      organizationId: row.organization_id,
-    },
-  }
 }
 
 async function getMe(userId) {

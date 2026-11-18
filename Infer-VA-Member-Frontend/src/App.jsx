@@ -7,11 +7,15 @@ import AIChat from "./pages/AIChat";
 import ChatHistory from "./pages/ChatHistory";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import AcceptInvitation from "./pages/AcceptInvitation";
+import ResetPassword from "./pages/ResetPassword";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/accept-invitation" element={<AcceptInvitation />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<MemberDashboard />} />

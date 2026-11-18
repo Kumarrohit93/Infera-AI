@@ -27,7 +27,8 @@ const DEPARTMENTS = [
   'Finance',
   'Engineering',
   'Operations',
-  'General'
+  'Sales',
+  'Marketing'
 ];
 
 const formatDate = (isoDate) => {

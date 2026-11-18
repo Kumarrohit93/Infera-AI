@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, documentApi, folderApi, memberApi } from '../services/api';
+import { authApi, documentApi, folderApi, memberApi, feedbackApi } from '../services/api';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -114,7 +114,6 @@ export default function DashboardPage() {
   });
 
   // TanStack Query: Live cache connection for documents, folders and members (ZERO MOCK DATA)
-  const { data: documents = [] } = useQuery({
   const { data: account } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,
@@ -145,6 +144,12 @@ export default function DashboardPage() {
     retry: false,
   });
 
+  const { data: monitoring = {} } = useQuery({
+    queryKey: ['monitoring'],
+    queryFn: feedbackApi.getMonitoring,
+    retry: false,
+  });
+
   useEffect(() => {
     if (documentsError) toast.error(documentsQueryError?.message || 'Failed to load documents.');
   }, [documentsError, documentsQueryError]);
@@ -167,7 +172,9 @@ export default function DashboardPage() {
 
   // Pipeline calculations
   const completedCount = documents.filter((d) => d.status === 'Completed').length;
-  const processingCount = documents.filter((d) => d.status === 'Processing').length;
+  const processingCount = documents.filter((d) =>
+    ['Queued', 'Processing'].includes(d.status)
+  ).length;
   const pendingCount = documents.filter((d) => d.status === 'Pending').length;
   const failedCount = documents.filter((d) => d.status === 'Failed').length;
 
@@ -272,7 +279,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* 2. 3 StatCards with Interactive Lift & Golden-Brown Glow */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px]">
             <StatCard
               title="Total Documents"
@@ -301,6 +308,16 @@ export default function DashboardPage() {
               subtitle="Accounts and pending invitations"
               icon={Users}
               onClick={() => navigate('/members')}
+            />
+          </div>
+          <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px] sm:col-span-2 lg:col-span-1">
+            <StatCard
+              title="Answers to Review"
+              value={monitoring.unhelpfulAnswers ?? 0}
+              trend={`${monitoring.failedDocuments ?? failedCount} failed documents`}
+              subtitle="Member ratings and ingestion failures"
+              icon={AlertTriangle}
+              onClick={() => navigate('/feedback')}
             />
           </div>
         </motion.div>

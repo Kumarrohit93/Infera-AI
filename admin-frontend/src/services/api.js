@@ -17,17 +17,45 @@ function handleUnauthorized() {
   }
 }
 
+async function fetchWithSession(url, options = {}) {
+  const send = () => {
+    const token = localStorage.getItem('accessToken');
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+    });
+  };
+
+  let response = await send();
+  if (response.status !== 401) return response;
+
+  const refreshResponse = await fetch(`${AUTH_API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  const refreshed = await refreshResponse.json().catch(() => null);
+  if (refreshResponse.ok && refreshed?.data?.accessToken) {
+    localStorage.setItem('accessToken', refreshed.data.accessToken);
+    response = await send();
+    return response;
+  }
+
+  handleUnauthorized();
+  throw new Error('Session expired. Please log in again.');
+}
+
 // Helper function to handle standard JSON API requests
 async function request(endpoint, options = {}, baseUrl = RAG_API_BASE_URL) {
-  const token = localStorage.getItem('accessToken');
-
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  const response = await fetchWithSession(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -58,6 +86,57 @@ async function request(endpoint, options = {}, baseUrl = RAG_API_BASE_URL) {
   return data?.data !== undefined ? data.data : data;
 }
 
+async function consumeEventStream(response, onEvent) {
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(
+      payload?.error?.message || payload?.message || 'The assistant request failed.'
+    );
+  }
+  if (!response.body) {
+    throw new Error('Streaming is not supported by this browser.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let completed = null;
+  const dispatch = (block) => {
+    if (!block.trim()) return;
+    let eventName = 'message';
+    const dataLines = [];
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim();
+      if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+    }
+    if (!dataLines.length) return;
+
+    const data = JSON.parse(dataLines.join('\n'));
+    if (eventName === 'error') {
+      throw new Error(data.message || 'The assistant request failed.');
+    }
+    if (eventName === 'done') completed = data;
+    onEvent(eventName, data);
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = blocks.pop() || '';
+      blocks.forEach(dispatch);
+      if (done) break;
+    }
+    if (buffer.trim()) dispatch(buffer);
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!completed) throw new Error('The assistant stream ended before completion.');
+  return completed;
+}
+
 // ==========================================
 // 1. Documents API (Infera-RAG-Backend - Port 7000)
 // ==========================================
@@ -77,31 +156,36 @@ export const documentApi = {
     return documents.map((document) => {
       const filename = document.originalFilename || document.name || '';
       const rawStatus = (document.status || 'pending').toLowerCase();
-      const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+      const uploadedAt = document.uploadedAt || document.uploadDate;
+      const parsedUploadDate = uploadedAt ? new Date(uploadedAt) : null;
+      const uploadStatuses = {
+        queued: 'Queued',
+        processing: 'Processing',
+        ready: 'Completed',
+        failed: 'Failed',
+      };
+      const displayStatus = uploadStatuses[rawStatus] || 'Pending';
 
       return {
         ...document,
         name: filename,
         extension: filename.includes('.') ? filename.split('.').pop().toUpperCase() : '',
         folder: document.folderName || document.folder || '',
-        size: `${((document.sizeBytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
-        uploadDate: document.uploadedAt
-          ? new Date(document.uploadedAt).toLocaleDateString()
+        size: document.size || `${((document.sizeBytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
+        uploadDate: parsedUploadDate && !Number.isNaN(parsedUploadDate.getTime())
+          ? parsedUploadDate.toLocaleDateString()
           : '',
-        status,
+        uploadStatus: displayStatus,
+        processingStatus: rawStatus,
+        status: displayStatus,
       };
     });
   },
 
   // POST /api/documents/upload (multipart/form-data)
   uploadDocument: async (formData) => {
-    const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${RAG_API_BASE_URL}/documents/upload`, {
+    const response = await fetchWithSession(`${RAG_API_BASE_URL}/documents/upload`, {
       method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: 'include',
       body: formData, // Browser automatically sets Content-Type with boundary
     });
 
@@ -115,6 +199,34 @@ export const documentApi = {
       throw new Error(data?.error?.message || data?.message || `Upload failed (${response.status})`);
     }
     return data.data;
+  },
+
+  uploadVersion: async (id, formData) => {
+    const response = await fetchWithSession(
+      `${RAG_API_BASE_URL}/documents/${encodeURIComponent(id)}/versions`,
+      { method: 'PUT', body: formData }
+    );
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error('Session expired. Please log in again.');
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(data?.error?.message || data?.message || `Version upload failed (${response.status})`);
+    }
+    return data.data;
+  },
+
+  getVersions: async (id) => {
+    const versions = await request(
+      `/documents/${encodeURIComponent(id)}/versions`,
+      {},
+      RAG_API_BASE_URL
+    );
+    if (!Array.isArray(versions)) {
+      throw new Error('The document version API returned an unexpected response.');
+    }
+    return versions;
   },
 
   // DELETE /api/documents/:id
@@ -291,6 +403,22 @@ export const ragApi = {
     );
   },
 
+  askQuestionStream: async ({ question, conversationId, onEvent }) => {
+    const response = await fetchWithSession(`${RAG_API_BASE_URL}/rag/ask/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        ...(conversationId ? { conversationId } : {}),
+      }),
+    });
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error('Session expired. Please log in again.');
+    }
+    return consumeEventStream(response, onEvent || (() => {}));
+  },
+
   // GET /api/conversations
   getConversations: async () => {
     const conversations = await request('/conversations', {}, RAG_API_BASE_URL);
@@ -320,6 +448,7 @@ export const ragApi = {
 // ==========================================
 export const feedbackApi = {
   getFeedback: async () => {
-    return request('/admin/feedback', {}, RAG_API_BASE_URL);
+    return request('/feedback/admin/list', {}, RAG_API_BASE_URL);
   },
+  getMonitoring: async () => request('/feedback/admin/monitoring', {}, RAG_API_BASE_URL),
 };

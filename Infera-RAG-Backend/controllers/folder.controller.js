@@ -21,6 +21,8 @@ async function listFolders(req, res) {
   const { search } = parseOrThrow(listFoldersQuerySchema, req.query)
   const folders = await folderService.listFolders({
     organizationId: req.user.organizationId,
+    userId: req.user.userId,
+    role: req.user.role,
     search,
   })
   res.json({ success: true, data: folders })
