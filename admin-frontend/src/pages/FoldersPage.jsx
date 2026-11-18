@@ -52,14 +52,9 @@ export default function FoldersPage() {
   const { data: serverFolders = [], isLoading, isFetching } = useQuery({
     queryKey: ['folders'],
     queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
+      const res = await folderApi.getFolders();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -68,14 +63,9 @@ export default function FoldersPage() {
   const { data: orgMembers = [] } = useQuery({
     queryKey: ['members'],
     queryFn: async () => {
-      try {
-        const res = await memberApi.getMembers();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['members']) ?? [];
-      }
+      const res = await memberApi.getMembers();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -116,20 +106,8 @@ export default function FoldersPage() {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
       toast.success(`Folder "${newFolder?.name || formData.name}" created successfully.`);
     },
-    onError: () => {
-      const fallbackFolder = {
-        id: `f-${Date.now()}`,
-        name: formData.name.trim(),
-        description: formData.description.trim() || 'Custom department repository.',
-        visibility: formData.visibility,
-        docCount: 0,
-        quotaUsedMB: 0,
-        members: formData.selectedMembers,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setFolders((prev) => [fallbackFolder, ...prev]);
-      queryClient.setQueryData(['folders'], (prev = []) => [fallbackFolder, ...prev]);
-      toast.success(`Folder "${formData.name}" created successfully.`);
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to create folder.');
     }
   });
 
@@ -139,9 +117,8 @@ export default function FoldersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
     },
-    onError: (_err, folderId) => {
-      setFolders((prev) => prev.filter((f) => f.id !== folderId));
-      queryClient.setQueryData(['folders'], (prev = []) => prev.filter((f) => f.id !== folderId));
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to delete folder.');
     }
   });
 

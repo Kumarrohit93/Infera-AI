@@ -4,7 +4,20 @@
  * Connects directly to backend API as specified in Infera Documentation (Chapter 5).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
+// RAG backend (folders, documents) - port 4000
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// Auth/DB backend (employees, departments, users, organizations) - port 3000
+const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:3000/api';
+
+// Called when the backend returns 401 (token missing or expired)
+function handleUnauthorized() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('isAdminAuth');
+  // Root route redirects to login when the user is not authenticated
+  if (window.location.pathname !== '/') {
+    window.location.assign('/');
+  }
+}
 
 // Helper function to handle standard JSON API requests
 async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
@@ -152,30 +165,56 @@ export const departmentApi = {
 };
 
 // ==========================================
-// 4. Team Members & Invitations API (Documentation Chapter 5.4)
+// 4. Team Members & Invitations API (Documentation Chapter 5.4 - Port 3000)
 // ==========================================
 export const memberApi = {
   // GET /api/users
   getMembers: async () => {
-    return request('/users');
+    return request('/users', {}, AUTH_API_BASE_URL);
   },
 
   // POST /api/users/invitations
   inviteMember: async (memberData) => {
-    return request('/users/invitations', {
-      method: 'POST',
-      body: JSON.stringify(memberData),
-    });
+    return request(
+      '/users/invitations',
+      {
+        method: 'POST',
+        body: JSON.stringify(memberData),
+      },
+      AUTH_API_BASE_URL
+    );
   },
 
   // DELETE /api/users/:id
   removeMember: async (id) => {
-    return request(`/users/${id}`, { method: 'DELETE' });
+    return request(`/users/${id}`, { method: 'DELETE' }, AUTH_API_BASE_URL);
   },
 };
 
 // ==========================================
-// 5. Feedback API (Documentation Chapter 5.8)
+// 5. Organization API (Auth/DB Backend - Port 3000)
+// ==========================================
+export const organizationApi = {
+  // GET /api/organizations/current
+  getCurrent: async () => {
+    return request('/organizations/current', {}, AUTH_API_BASE_URL);
+  },
+
+  // PATCH /api/organizations/current
+  updateCurrent: async (organizationData) => {
+    return request(
+      '/organizations/current',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(organizationData),
+      },
+      AUTH_API_BASE_URL
+    );
+  },
+};
+
+// ==========================================
+// 6. Feedback API (Documentation Chapter 5.8)
 // ==========================================
 export const feedbackApi = {
   // GET /api/admin/feedback

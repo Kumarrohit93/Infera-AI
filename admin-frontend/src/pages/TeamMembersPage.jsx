@@ -49,14 +49,9 @@ export default function TeamMembersPage() {
   const { data: serverMembers = [], isLoading, isFetching } = useQuery({
     queryKey: ['members'],
     queryFn: async () => {
-      try {
-        const res = await memberApi.getMembers();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['members']) ?? [];
-      }
+      const res = await memberApi.getMembers();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -65,14 +60,9 @@ export default function TeamMembersPage() {
   const { data: orgEmployees = [] } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
-      try {
-        const res = await employeeApi.getEmployees();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['employees']) ?? [];
-      }
+      const res = await employeeApi.getEmployees();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -81,14 +71,9 @@ export default function TeamMembersPage() {
   const { data: serverFolders = [] } = useQuery({
     queryKey: ['folders'],
     queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
+      const res = await folderApi.getFolders();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -144,21 +129,8 @@ export default function TeamMembersPage() {
       queryClient.invalidateQueries({ queryKey: ['members'] });
       toast.success(`Invitation sent to ${newMember?.email || variables.email}`);
     },
-    onError: (_err, variables) => {
-      const fallbackMember = {
-        id: `m-${Date.now()}`,
-        employeeId: variables.employeeId,
-        name: variables.name,
-        email: variables.email,
-        department: variables.department,
-        role: 'Member',
-        status: 'Invited',
-        folders: variables.folderIds,
-        joinedDate: new Date().toISOString().split('T')[0]
-      };
-      setMembers((prev) => [...prev, fallbackMember]);
-      queryClient.setQueryData(['members'], (prev = []) => [...prev, fallbackMember]);
-      toast.success(`Invitation sent to ${fallbackMember.email}`);
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to send invitation.');
     }
   });
 
@@ -168,9 +140,8 @@ export default function TeamMembersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
     },
-    onError: (_err, memberId) => {
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
-      queryClient.setQueryData(['members'], (prev = []) => prev.filter((m) => m.id !== memberId));
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to remove member.');
     }
   });
 
