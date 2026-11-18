@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,7 +17,6 @@ import {
   Check,
   Calendar,
   Inbox,
-  HardDrive,
   ShieldCheck
 } from 'lucide-react';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
@@ -48,50 +47,34 @@ const itemVariants = {
 export default function FoldersPage() {
   const queryClient = useQueryClient();
 
-  // 1. TanStack Query: Fetch Folders (Strictly Zero Mock Data, preserves offline cache)
-  const { data: serverFolders = [], isLoading, isFetching } = useQuery({
+  const { data: serverFolders = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['folders'],
-    queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
-    },
+    queryFn: folderApi.getFolders,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // TanStack Query: Fetch Team Members dynamically (Strictly Zero Mock Data)
-  const { data: orgMembers = [] } = useQuery({
+  useEffect(() => {
+    if (isError) toast.error(error?.message || 'Failed to load folders.');
+  }, [isError, error]);
+
+  const { data: orgMembers = [], isError: membersError, error: membersQueryError } = useQuery({
     queryKey: ['members'],
-    queryFn: async () => {
-      try {
-        const res = await memberApi.getMembers();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['members']) ?? [];
-      }
-    },
+    queryFn: memberApi.getMembers,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
+
+  useEffect(() => {
+    if (membersError) toast.error(membersQueryError?.message || 'Failed to load team members.');
+  }, [membersError, membersQueryError]);
 
   const availableOrgMembers = orgMembers
-    .map((m) => (typeof m === 'string' ? m : m?.name || m?.email))
-    .filter(Boolean);
+    .filter((member) => member.status === 'Active');
 
-  // Local state synced with server/cache data
-  const [folders, setFolders] = useState([]);
-
-  React.useEffect(() => {
-    if (serverFolders) {
-      setFolders(serverFolders);
-    }
-  }, [serverFolders]);
+  const folders = serverFolders;
 
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,21 +99,17 @@ export default function FoldersPage() {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
       toast.success(`Folder "${newFolder?.name || formData.name}" created successfully.`);
     },
-    onError: () => {
-      const fallbackFolder = {
-        id: `f-${Date.now()}`,
-        name: formData.name.trim(),
-        description: formData.description.trim() || 'Custom department repository.',
-        visibility: formData.visibility,
-        docCount: 0,
-        quotaUsedMB: 0,
-        members: formData.selectedMembers,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setFolders((prev) => [fallbackFolder, ...prev]);
-      queryClient.setQueryData(['folders'], (prev = []) => [fallbackFolder, ...prev]);
-      toast.success(`Folder "${formData.name}" created successfully.`);
-    }
+    onError: (err) => toast.error(err?.message || 'Failed to create folder.')
+  });
+
+  const updateFolderMutation = useMutation({
+    mutationFn: ({ id, data }) => folderApi.updateFolder(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      toast.success('Folder updated successfully.');
+      setEditingFolder(null);
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to update folder.')
   });
 
   // 3. TanStack Mutation: Delete Folder (Syncs shared ['folders'] cache)
@@ -139,9 +118,9 @@ export default function FoldersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
     },
-    onError: (_err, folderId) => {
-      setFolders((prev) => prev.filter((f) => f.id !== folderId));
-      queryClient.setQueryData(['folders'], (prev = []) => prev.filter((f) => f.id !== folderId));
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to delete folder.');
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
     }
   });
 
@@ -189,26 +168,18 @@ export default function FoldersPage() {
     }
 
     if (editingFolder) {
-      const updatedList = folders.map((f) =>
-        f.id === editingFolder.id
-          ? {
-              ...f,
-              name: formData.name.trim(),
-              description: formData.description.trim(),
-              visibility: formData.visibility,
-              members: formData.selectedMembers
-            }
-          : f
-      );
-      setFolders(updatedList);
-      queryClient.setQueryData(['folders'], updatedList);
-      toast.success(`Folder "${formData.name}" updated successfully.`);
-      setEditingFolder(null);
+      updateFolderMutation.mutate({
+        id: editingFolder.id,
+        data: {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          members: formData.selectedMembers
+        }
+      });
     } else {
       createFolderMutation.mutate({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        visibility: formData.visibility,
         members: formData.selectedMembers
       });
       setIsCreateModalOpen(false);
@@ -216,9 +187,8 @@ export default function FoldersPage() {
   };
 
   // Delete Folder
-  const handleDeleteFolder = (folderId, folderName) => {
+  const handleDeleteFolder = (folderId) => {
     deleteFolderMutation.mutate(folderId);
-    toast.error(`Folder "${folderName}" deleted.`);
   };
 
   // Filtered Folders
@@ -333,13 +303,9 @@ export default function FoldersPage() {
               )}
             </div>
           ) : viewMode === 'grid' ? (
-            /* GRID VIEW WITH LUXURY ELEVATION & QUOTA METER */
+            /* GRID VIEW */
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
               {filteredFolders.map((folder) => {
-                const quotaPercentage = Math.min(
-                  100,
-                  Math.round(((folder.quotaUsedMB || 24) / 500) * 100)
-                );
                 return (
                   <div
                     key={folder.id}
@@ -386,24 +352,6 @@ export default function FoldersPage() {
                         {folder.description}
                       </p>
 
-                      {/* Vector Quota Mini Meter */}
-                      <div className="mt-4 pt-3 border-t border-[#F3E8DC]/80">
-                        <div className="flex items-center justify-between text-[11px] text-[#77716B]">
-                          <span className="flex items-center gap-1 font-medium">
-                            <HardDrive className="w-3 h-3 text-[#96613F]" />
-                            Vector Quota
-                          </span>
-                          <span className="font-semibold text-[#25211E]">
-                            {folder.quotaUsedMB || 0} / 500 MB
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-[#E8DCD1] rounded-full overflow-hidden mt-1.5">
-                          <div
-                            className="h-full bg-[#96613F] rounded-full transition-all duration-500"
-                            style={{ width: `${quotaPercentage}%` }}
-                          />
-                        </div>
-                      </div>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-[#F3E8DC] space-y-2.5">
@@ -424,15 +372,19 @@ export default function FoldersPage() {
                             <Users className="w-3 h-3" /> Access:
                           </span>
                           <div className="flex -space-x-1.5 overflow-hidden">
-                            {folder.members.map((m) => (
+                            {folder.members.map((memberId) => {
+                              const member = orgMembers.find((item) => item.id === memberId);
+                              const label = member?.name || member?.email || memberId;
+                              return (
                               <span
-                                key={m}
-                                title={m}
+                                key={memberId}
+                                title={label}
                                 className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F3E8DC] hover:bg-[#96613F] hover:text-white transition-all text-[#4A3023] border border-[#FFFFFF] text-[10px] font-bold shadow-xs cursor-default"
                               >
-                                {m.split(' ').map((n) => n[0]).join('')}
+                                {label.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </span>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -584,11 +536,11 @@ export default function FoldersPage() {
                           </p>
                         ) : (
                           availableOrgMembers.map((member) => {
-                            const isChecked = formData.selectedMembers.includes(member);
+                            const isChecked = formData.selectedMembers.includes(member.id);
                             return (
                               <label
-                                key={member}
-                                onClick={() => toggleMemberSelection(member)}
+                                key={member.id}
+                                onClick={() => toggleMemberSelection(member.id)}
                                 className="flex items-center gap-2 p-1.5 rounded hover:bg-[#FFFFFF] cursor-pointer transition-colors"
                               >
                                 <div
@@ -600,7 +552,7 @@ export default function FoldersPage() {
                                 >
                                   {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                                 </div>
-                                <span className="font-medium text-[#25211E]">{member}</span>
+                                <span className="font-medium text-[#25211E]">{member.name || member.email}</span>
                               </label>
                             );
                           })

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { feedbackApi } from '../services/api';
@@ -10,11 +10,9 @@ import {
   Eye,
   MessageSquare,
   FileText,
-  Clock,
   Inbox,
   X,
   AlertCircle,
-  CheckCircle2,
   Loader2
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
@@ -42,16 +40,9 @@ const itemVariants = {
 
 export default function FeedbackPage() {
   // TanStack Query: ZERO MOCK DATA - Empty array by default (backend se aayega)
-  const { data: feedbacks = [], isLoading } = useQuery({
+  const { data: feedbacks = [], isLoading, isError, error } = useQuery({
     queryKey: ['feedback'],
-    queryFn: async () => {
-      try {
-        const res = await feedbackApi.getFeedback();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return [];
-      }
-    },
+    queryFn: feedbackApi.getFeedback,
     initialData: [], // Bilkul empty array, zero mock data
   });
 
@@ -195,6 +186,16 @@ export default function FeedbackPage() {
           <div className="p-12 text-center text-[#77716B] text-xs flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
             <span>Loading answer feedback logs...</span>
+          </div>
+        ) : isError ? (
+          <div className="p-10 sm:p-14 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#FDF0EF] border border-[#F3C9C6] flex items-center justify-center text-[#A83833] mx-auto mb-3">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-[#25211E]">Feedback API unavailable</h4>
+            <p className="text-xs text-[#77716B] max-w-sm mx-auto mt-1 leading-relaxed">
+              {error?.message || 'The RAG backend does not currently provide a feedback endpoint.'}
+            </p>
           </div>
         ) : filteredFeedbacks.length === 0 ? (
           <div className="p-10 sm:p-14 text-center">

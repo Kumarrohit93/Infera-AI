@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,57 +54,41 @@ export default function DocumentsPage() {
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
 
   // TanStack Query: Fetch Folders dynamically (Synchronised with FoldersPage, Zero Mock Data)
-  const { data: folders = [] } = useQuery({
+  const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
     queryKey: ['folders'],
-    queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
-    },
+    queryFn: folderApi.getFolders,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // Sync targetUploadFolder with available folders
   useEffect(() => {
-    if (folders.length > 0) {
-      const stillExists = folders.some((f) => f.name === targetUploadFolder);
-      if (!targetUploadFolder || !stillExists) {
-        setTargetUploadFolder(folders[0].name);
-      }
-    } else {
-      setTargetUploadFolder('');
-    }
-  }, [folders, targetUploadFolder]);
+    if (foldersError) toast.error(foldersQueryError?.message || 'Failed to load folders.');
+  }, [foldersError, foldersQueryError]);
+
+  const effectiveUploadFolder = folders.some((folder) => folder.name === targetUploadFolder)
+    ? targetUploadFolder
+    : folders[0]?.name || '';
 
   // TanStack Query: Fetch Documents (Strictly Zero Mock Data)
-  const { data: serverDocs = [], isLoading, isFetching } = useQuery({
+  const { data: serverDocs = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['documents', selectedFolderFilter],
-    queryFn: async () => {
-      try {
-        const res = await documentApi.getDocuments(selectedFolderFilter);
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['documents', selectedFolderFilter]) ?? [];
-      }
+    queryFn: () => {
+      const selectedFolder = folders.find((folder) => folder.name === selectedFolderFilter);
+      return documentApi.getDocuments(
+        selectedFolderFilter === 'All' ? 'All' : selectedFolder?.id || selectedFolderFilter
+      );
     },
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // Local state synced with server data + uploaded items
-  const [documents, setDocuments] = useState([]);
-
   useEffect(() => {
-    if (serverDocs) {
-      setDocuments(serverDocs);
-    }
-  }, [serverDocs]);
+    if (isError) toast.error(error?.message || 'Failed to load documents.');
+  }, [isError, error]);
+
+  const documents = serverDocs;
 
   // Drag over visual state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -124,74 +108,66 @@ export default function DocumentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      toast.success('Document removed from the knowledge base.');
     },
-    onError: (_err, docId) => {
-      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to delete document.');
     }
   });
 
-  // File Upload with simulated RAG pipeline progress & FoldersPage docCount sync
-  const processFiles = (filesList) => {
+  // Real Backend File Upload with progress animation
+  const processFiles = async (filesList) => {
     const files = Array.from(filesList || []);
     if (files.length === 0) return;
 
-    if (!targetUploadFolder) {
+    if (!effectiveUploadFolder) {
       toast.error('Please create a folder in Folders page first before uploading.');
       return;
     }
 
-    const chosenFolder = targetUploadFolder;
+    const matchedFolder = folders.find(
+      (f) => f.name === effectiveUploadFolder || f.id === effectiveUploadFolder
+    );
+    const folderId = matchedFolder?.id;
+
+    if (!folderId) {
+      toast.error('Please select a valid folder.');
+      return;
+    }
+
     const firstFile = files[0];
     setCurrentUploadingName(files.length === 1 ? firstFile.name : `${files.length} documents`);
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(25);
 
-    // Simulate chunking and vector embedding pipeline
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return prev + 25;
-      });
-    }, 250);
+    const progressTimer = setInterval(() => {
+      setUploadProgress((prev) => (prev < 85 ? prev + 15 : prev));
+    }, 300);
 
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(100);
-
-      const newDocs = files.map((file, idx) => ({
-        id: Date.now() + idx,
-        name: file.name,
-        extension: file.name.split('.').pop().toUpperCase(),
-        folder: chosenFolder,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadDate: new Date().toISOString().split('T')[0],
-        status: 'Completed',
-        pages: Math.floor(Math.random() * 40) + 12,
-        chunks: Math.floor(Math.random() * 150) + 35
-      }));
-
-      setDocuments((prev) => [...newDocs, ...prev]);
-      queryClient.setQueryData(['documents', selectedFolderFilter], (prev = []) => [...newDocs, ...prev]);
-      if (selectedFolderFilter !== 'All') {
-        queryClient.setQueryData(['documents', 'All'], (prev = []) => [...newDocs, ...prev]);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folderId', folderId);
+        await documentApi.uploadDocument(formData);
       }
 
-      // Sync folder docCount in FoldersPage cache
-      queryClient.setQueryData(['folders'], (prev = []) =>
-        prev.map((f) =>
-          f.name === chosenFolder
-            ? { ...f, docCount: (f.docCount || 0) + newDocs.length }
-            : f
-        )
-      );
+      clearInterval(progressTimer);
+      setUploadProgress(100);
 
-      setIsUploading(false);
-      setUploadProgress(0);
-      toast.success(`${files.length} document(s) uploaded to "${chosenFolder}"!`);
-    }, 1200);
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+
+      toast.success(`${files.length} document(s) uploaded! Indexing in progress.`);
+    } catch (err) {
+      clearInterval(progressTimer);
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 600);
+    }
   };
 
   const handleFileSelect = (e) => {
@@ -220,26 +196,6 @@ export default function DocumentsPage() {
   // Delete Document Handler
   const handleDelete = (doc) => {
     deleteDocMutation.mutate(doc.id);
-    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-    queryClient.setQueryData(['documents', selectedFolderFilter], (prev = []) =>
-      prev.filter((d) => d.id !== doc.id)
-    );
-    if (selectedFolderFilter !== 'All') {
-      queryClient.setQueryData(['documents', 'All'], (prev = []) =>
-        prev.filter((d) => d.id !== doc.id)
-      );
-    }
-
-    // Sync folder docCount decrement in FoldersPage cache
-    queryClient.setQueryData(['folders'], (prev = []) =>
-      prev.map((f) =>
-        f.name === doc.folder
-          ? { ...f, docCount: Math.max(0, (f.docCount || 0) - 1) }
-          : f
-      )
-    );
-
-    toast.error(`"${doc.name}" removed from knowledge base.`);
   };
 
   // Format Badge Color Helper
@@ -334,7 +290,7 @@ export default function DocumentsPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#77716B] shrink-0">Target Folder:</span>
                 <select
-                  value={targetUploadFolder}
+                  value={effectiveUploadFolder}
                   onChange={(e) => setTargetUploadFolder(e.target.value)}
                   disabled={folders.length === 0}
                   className="w-full sm:w-auto px-3.5 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
@@ -489,8 +445,9 @@ export default function DocumentsPage() {
                               </span>
                             </div>
                             <p className="text-[11px] text-[#77716B] mt-0.5">
-                              {doc.pages ? `${doc.pages} pages • ` : ''}
-                              {doc.chunks ? `${doc.chunks} vector chunks` : 'Vectorizing'}
+                              {doc.pages ? `${doc.pages} pages` : doc.mimeType || ''}
+                              {doc.chunks ? ` • ${doc.chunks} vector chunks` : ''}
+                              {doc.errorMessage ? ` • ${doc.errorMessage}` : ''}
                             </p>
                           </div>
                         </div>
@@ -604,7 +561,7 @@ export default function DocumentsPage() {
                           Which folder do you want to upload documents into?
                         </label>
                         <select
-                          value={targetUploadFolder}
+                          value={effectiveUploadFolder}
                           onChange={(e) => setTargetUploadFolder(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
                         >

@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { documentApi, folderApi, memberApi } from '../services/api';
+import { authApi, documentApi, folderApi, memberApi } from '../services/api';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -86,70 +86,55 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
 
-  // Range toggle
-  const [chartRange, setChartRange] = useState('7d');
-
   // Upload folder modal state
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
 
-  // TanStack Query: Live cache connection for documents, folders and members (ZERO MOCK DATA)
-  const { data: documents = [] } = useQuery({
+  const { data: account } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: authApi.getCurrentUser,
+    retry: false,
+  });
+
+  const { data: documents = [], isError: documentsError, error: documentsQueryError } = useQuery({
     queryKey: ['documents', 'All'],
-    queryFn: async () => {
-      try {
-        const res = await documentApi.getDocuments('All');
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['documents', 'All']) ?? [];
-      }
-    },
+    queryFn: () => documentApi.getDocuments('All'),
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  const { data: folders = [] } = useQuery({
+  const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
     queryKey: ['folders'],
-    queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
-    },
+    queryFn: folderApi.getFolders,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  const { data: members = [] } = useQuery({
+  const { data: members = [], isError: membersError, error: membersQueryError } = useQuery({
     queryKey: ['members'],
-    queryFn: async () => {
-      try {
-        const res = await memberApi.getMembers();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['members']) ?? [];
-      }
-    },
+    queryFn: memberApi.getMembers,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // Sync targetUploadFolder with available folders
   useEffect(() => {
-    if (folders.length > 0) {
-      const stillExists = folders.some((f) => f.name === targetUploadFolder);
-      if (!targetUploadFolder || !stillExists) {
-        setTargetUploadFolder(folders[0].name);
-      }
-    } else {
-      setTargetUploadFolder('');
-    }
-  }, [folders, targetUploadFolder]);
+    if (documentsError) toast.error(documentsQueryError?.message || 'Failed to load documents.');
+  }, [documentsError, documentsQueryError]);
+
+  useEffect(() => {
+    if (foldersError) toast.error(foldersQueryError?.message || 'Failed to load folders.');
+  }, [foldersError, foldersQueryError]);
+
+  useEffect(() => {
+    if (membersError) toast.error(membersQueryError?.message || 'Failed to load team members.');
+  }, [membersError, membersQueryError]);
+
+  const effectiveUploadFolder = folders.some((folder) => folder.name === targetUploadFolder)
+    ? targetUploadFolder
+    : folders[0]?.name || '';
 
   // Zero mock data - backend se aayega
   const [chartData] = useState([]);
@@ -161,39 +146,36 @@ export default function DashboardPage() {
   const pendingCount = documents.filter((d) => d.status === 'Pending').length;
   const failedCount = documents.filter((d) => d.status === 'Failed').length;
 
-  // Handle File Upload from Dashboard
-  const processFiles = (filesList) => {
+  const processFiles = async (filesList) => {
     const files = Array.from(filesList || []);
     if (files.length === 0) return;
 
-    if (!targetUploadFolder) {
+    if (!effectiveUploadFolder) {
       toast.error('Please create a folder in Folders page first before uploading.');
       return;
     }
 
-    const chosenFolder = targetUploadFolder;
-    const newDocs = files.map((file, idx) => ({
-      id: Date.now() + idx,
-      name: file.name,
-      extension: file.name.split('.').pop().toUpperCase(),
-      folder: chosenFolder,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      uploadDate: new Date().toISOString().split('T')[0],
-      status: 'Completed',
-      pages: Math.floor(Math.random() * 40) + 12,
-      chunks: Math.floor(Math.random() * 150) + 35
-    }));
+    const folder = folders.find((item) => item.name === effectiveUploadFolder);
+    if (!folder?.id) {
+      toast.error('The selected folder is no longer available. Refresh and try again.');
+      return;
+    }
 
-    queryClient.setQueryData(['documents', 'All'], (prev = []) => [...newDocs, ...prev]);
-    queryClient.setQueryData(['folders'], (prev = []) =>
-      prev.map((f) =>
-        f.name === chosenFolder
-          ? { ...f, docCount: (f.docCount || 0) + newDocs.length }
-          : f
-      )
-    );
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folderId', folder.id);
+        await documentApi.uploadDocument(formData);
+      }
 
-    toast.success(`${files.length} document(s) uploaded to "${chosenFolder}"!`);
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      setIsUploadFolderModalOpen(false);
+      toast.success(`${files.length} document(s) uploaded to "${folder.name}".`);
+    } catch (err) {
+      toast.error(err?.message || 'Document upload failed.');
+    }
   };
 
   const handleFileSelect = (e) => {
@@ -222,27 +204,22 @@ export default function DashboardPage() {
         {/* Subtle Background Radial Ambient Glow */}
         <div className="absolute top-10 right-20 w-96 h-96 rounded-full bg-[#F3E8DC]/40 blur-3xl pointer-events-none -z-10" />
 
-        {/* 1. Welcome Banner with Luxury Gradient & Telemetry Status */}
+        {/* 1. Welcome Banner */}
         <motion.div
           variants={itemVariants}
           className="relative overflow-hidden bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F]/40 rounded-[18px] p-6 sm:p-8 shadow-sm hover:shadow-[0_10px_30px_-10px_rgba(150,97,63,0.12)] transition-all duration-300"
         >
           <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2 max-w-2xl">
-              {/* Live Telemetry Pill */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F3E8DC]/80 border border-[#E8DCD1] text-[11px] font-bold uppercase tracking-wider text-[#96613F] shadow-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2B6141] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2B6141]" />
-                </span>
-                <span>RAG Engine Online • Strict Grounding v2.4</span>
+                <span>Live workspace data</span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#25211E] tracking-tight">
-                Welcome back, Jiya Sharma
+                Welcome back, {account?.user?.name || 'Admin'}
               </h2>
               <p className="text-xs sm:text-sm text-[#77716B] leading-relaxed">
-                Organization telemetry, semantic chunking health, and role-based knowledge access.
+                Documents, folders, and organization members from your connected backend services.
               </p>
             </div>
 
@@ -274,8 +251,8 @@ export default function DashboardPage() {
             <StatCard
               title="Total Documents"
               value={documents.length}
-              trend="+0 this week"
-              subtitle="Indexed vector chunks"
+              trend={`${failedCount} failed`}
+              subtitle={`${completedCount} complete, ${processingCount} processing`}
               icon={FileText}
               onClick={() => navigate('/documents')}
             />
@@ -284,8 +261,8 @@ export default function DashboardPage() {
             <StatCard
               title="Total Folders"
               value={folders.length}
-              trend="100% ACL enforced"
-              subtitle="Department repositories"
+              trend="Configured repositories"
+              subtitle="Document destinations"
               icon={FolderKanban}
               onClick={() => navigate('/folders')}
             />
@@ -294,8 +271,8 @@ export default function DashboardPage() {
             <StatCard
               title="Total Members"
               value={members.length}
-              trend="Role based access"
-              subtitle="Active organization users"
+              trend={`${members.filter((member) => member.status === 'Active').length} active`}
+              subtitle="Accounts and pending invitations"
               icon={Users}
               onClick={() => navigate('/members')}
             />
@@ -312,40 +289,13 @@ export default function DashboardPage() {
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-[#25211E]">
-                    Recent Query & Citation Activity
-                  </h3>
+                  <h3 className="text-sm sm:text-base font-bold text-[#25211E]">Query & Citation Activity</h3>
                   <p className="text-[11px] sm:text-xs text-[#77716B]">
                     Daily user questions vs grounded citations returned
                   </p>
                 </div>
               </div>
 
-              {/* 7D vs 30D Filter Pill */}
-              <div className="inline-flex items-center p-1 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setChartRange('7d')}
-                  className={`px-3 py-1 rounded-[6px] text-xs font-semibold transition-all cursor-pointer ${
-                    chartRange === '7d'
-                      ? 'bg-[#96613F] text-white shadow-xs'
-                      : 'text-[#77716B] hover:text-[#25211E]'
-                  }`}
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartRange('30d')}
-                  className={`px-3 py-1 rounded-[6px] text-xs font-semibold transition-all cursor-pointer ${
-                    chartRange === '30d'
-                      ? 'bg-[#96613F] text-white shadow-xs'
-                      : 'text-[#77716B] hover:text-[#25211E]'
-                  }`}
-                >
-                  Last 30 Days
-                </button>
-              </div>
             </div>
 
             {/* Chart or Clean Empty State */}
@@ -355,9 +305,9 @@ export default function DashboardPage() {
                   <div className="w-12 h-12 rounded-full bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-center text-[#77716B] mx-auto mb-3 shadow-inner">
                     <BarChart3 className="w-6 h-6" />
                   </div>
-                  <h4 className="text-sm font-bold text-[#25211E]">No query activity recorded yet</h4>
+                  <h4 className="text-sm font-bold text-[#25211E]">Query analytics are unavailable</h4>
                   <p className="text-xs text-[#77716B] max-w-sm mx-auto mt-1 leading-relaxed">
-                    Daily search questions and vector citations will plot here once members query the knowledge base.
+                    The current backend APIs do not expose query and citation analytics.
                   </p>
                 </div>
               ) : (
@@ -407,7 +357,7 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-bold text-[#25211E]">Pipeline Status</h3>
               </div>
               <span className="text-[11px] font-semibold text-[#96613F] bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#E8DCD1]">
-                Vector Index
+                Live counts
               </span>
             </div>
 
@@ -583,16 +533,16 @@ export default function DashboardPage() {
               </div>
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#EEF5F0] text-[#2B6141] border border-[#CBE3D3]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2B6141] animate-ping" />
-                Live Log
+                Activity
               </span>
             </div>
 
             <div className="bg-[#FFFFFF] border border-[#E8DCD1] hover:border-[#96613F]/30 rounded-[16px] p-5 shadow-sm hover:shadow-[0_10px_28px_-10px_rgba(150,97,63,0.12)] transition-all duration-300">
               {recentActivities.length === 0 ? (
                 <div className="py-10 text-center">
-                  <p className="text-xs font-semibold text-[#25211E]">No recent activity logged</p>
+                  <p className="text-xs font-semibold text-[#25211E]">Activity feed unavailable</p>
                   <p className="text-[11px] text-[#77716B] mt-1 max-w-xs mx-auto">
-                    Actions like uploads and ACL changes will appear here in real time.
+                    The current backend APIs do not expose an organization activity feed.
                   </p>
                 </div>
               ) : (
@@ -674,7 +624,7 @@ export default function DashboardPage() {
                           Which folder do you want to upload documents into?
                         </label>
                         <select
-                          value={targetUploadFolder}
+                          value={effectiveUploadFolder}
                           onChange={(e) => setTargetUploadFolder(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
                         >

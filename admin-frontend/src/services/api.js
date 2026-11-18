@@ -1,13 +1,24 @@
 /**
  * Infera AI - Real Backend API Client
  * Strictly Zero Mock Data.
- * Connects directly to backend API as specified in Infera Documentation (Chapter 5).
+ * Fully connected to:
+ * 1. Infera-Backend (Auth, Users, Employees, Departments on Port 9000)
+ * 2. Infera-RAG-Backend (Documents, Folders, Vector Search, AI Chat on Port 7000)
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
+const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api').replace(/\/$/, '');
+const RAG_API_BASE_URL = (import.meta.env.VITE_RAG_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:7000/api').replace(/\/$/, '');
+
+function handleUnauthorized() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('isAdminAuth');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
 
 // Helper function to handle standard JSON API requests
-async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
+async function request(endpoint, options = {}, baseUrl = RAG_API_BASE_URL) {
   const token = localStorage.getItem('accessToken');
 
   const headers = {
@@ -19,7 +30,7 @@ async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
-    credentials: 'include', // Needed for httpOnly refresh cookies (Chapter 5.1)
+    credentials: 'include',
   });
 
   if (response.status === 401) {
@@ -32,30 +43,60 @@ async function request(endpoint, options = {}, baseUrl = API_BASE_URL) {
     return null;
   }
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data?.error?.message || data?.message || 'API request failed');
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(`The API at ${baseUrl} returned an invalid response.`);
   }
 
-  // Documentation specifies success envelope: { success: true, data: [...] }
-  return data.data !== undefined ? data.data : data;
+  if (!response.ok) {
+    throw new Error(data?.error?.message || data?.message || `API request failed (${response.status})`);
+  }
+
+  return data?.data !== undefined ? data.data : data;
 }
 
 // ==========================================
-// 1. Documents API (Documentation Chapter 5.6 - Port 4000)
+// 1. Documents API (Infera-RAG-Backend - Port 7000)
 // ==========================================
 export const documentApi = {
   // GET /api/documents
   getDocuments: async (folderId) => {
-    const query = folderId && folderId !== 'All' ? `?folderId=${folderId}` : '';
-    return request(`/documents${query}`);
+    const query = folderId && folderId !== 'All'
+      ? `?${new URLSearchParams({ folderId })}`
+      : '';
+    const result = await request(`/documents${query}`, {}, RAG_API_BASE_URL);
+    const documents = Array.isArray(result) ? result : result?.documents;
+
+    if (!Array.isArray(documents)) {
+      throw new Error('The document API returned an unexpected response.');
+    }
+
+    return documents.map((document) => {
+      const filename = document.originalFilename || document.name || '';
+      const rawStatus = (document.status || 'pending').toLowerCase();
+      const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+
+      return {
+        ...document,
+        name: filename,
+        extension: filename.includes('.') ? filename.split('.').pop().toUpperCase() : '',
+        folder: document.folderName || document.folder || '',
+        size: `${((document.sizeBytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
+        uploadDate: document.uploadedAt
+          ? new Date(document.uploadedAt).toLocaleDateString()
+          : '',
+        status,
+      };
+    });
   },
 
   // POST /api/documents/upload (multipart/form-data)
   uploadDocument: async (formData) => {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+    const response = await fetch(`${RAG_API_BASE_URL}/documents/upload`, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -71,47 +112,76 @@ export const documentApi = {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data?.error?.message || data?.message || 'Upload failed');
+      throw new Error(data?.error?.message || data?.message || `Upload failed (${response.status})`);
     }
     return data.data;
   },
 
   // DELETE /api/documents/:id
   deleteDocument: async (id) => {
-    return request(`/documents/${id}`, { method: 'DELETE' });
+    return request(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' }, RAG_API_BASE_URL);
   },
 };
 
 // ==========================================
-// 2. Folders API (Documentation Chapter 5.5 - Port 4000)
+// 2. Folders API (Infera-RAG-Backend - Port 7000)
 // ==========================================
 export const folderApi = {
   // GET /api/folders
   getFolders: async () => {
-    return request('/folders');
+    const folders = await request('/folders', {}, RAG_API_BASE_URL);
+    if (!Array.isArray(folders)) {
+      throw new Error('The folder API returned an unexpected response.');
+    }
+    return folders.map((folder) => ({
+      ...folder,
+      description: folder.description || '',
+      docCount: folder.docCount ?? folder.documentCount ?? 0,
+      visibility: folder.visibility || 'Restricted',
+      members: Array.isArray(folder.members) ? folder.members : [],
+    }));
   },
 
   // POST /api/folders
   createFolder: async (folderData) => {
-    return request('/folders', {
-      method: 'POST',
-      body: JSON.stringify(folderData),
-    });
+    return request(
+      '/folders',
+      {
+        method: 'POST',
+        body: JSON.stringify(folderData),
+      },
+      RAG_API_BASE_URL
+    );
+  },
+
+  updateFolder: async (id, folderData) => {
+    return request(
+      `/folders/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(folderData),
+      },
+      RAG_API_BASE_URL
+    );
   },
 
   // DELETE /api/folders/:id
   deleteFolder: async (id) => {
-    return request(`/folders/${id}`, { method: 'DELETE' });
+    return request(`/folders/${encodeURIComponent(id)}`, { method: 'DELETE' }, RAG_API_BASE_URL);
   },
 };
 
 // ==========================================
-// 3. Organization Employees & Departments API (Auth/DB Backend - Port 3000)
+// 3. Organization Employees & Departments API (Infera-Backend - Port 9000)
 // ==========================================
 export const employeeApi = {
   // GET /api/employees
   getEmployees: async () => {
-    return request('/employees', {}, AUTH_API_BASE_URL);
+    const employees = await request('/employees', {}, AUTH_API_BASE_URL);
+    if (!Array.isArray(employees)) {
+      throw new Error('The employee API returned an unexpected response.');
+    }
+    return employees;
   },
 
   // POST /api/employees
@@ -128,14 +198,18 @@ export const employeeApi = {
 
   // DELETE /api/employees/:id
   deleteEmployee: async (id) => {
-    return request(`/employees/${id}`, { method: 'DELETE' }, AUTH_API_BASE_URL);
+    return request(`/employees/${encodeURIComponent(id)}`, { method: 'DELETE' }, AUTH_API_BASE_URL);
   },
 };
 
 export const departmentApi = {
   // GET /api/departments
   getDepartments: async () => {
-    return request('/departments', {}, AUTH_API_BASE_URL);
+    const departments = await request('/departments', {}, AUTH_API_BASE_URL);
+    if (!Array.isArray(departments)) {
+      throw new Error('The department API returned an unexpected response.');
+    }
+    return departments;
   },
 
   // POST /api/departments
@@ -151,35 +225,101 @@ export const departmentApi = {
   },
 };
 
+export const authApi = {
+  getCurrentUser: async () => request('/auth/me', {}, AUTH_API_BASE_URL),
+};
+
 // ==========================================
-// 4. Team Members & Invitations API (Documentation Chapter 5.4)
+// 4. Team Members & Invitations API (Infera-Backend - Port 9000)
 // ==========================================
 export const memberApi = {
   // GET /api/users
   getMembers: async () => {
-    return request('/users');
+    const members = await request('/users', {}, AUTH_API_BASE_URL);
+    if (!Array.isArray(members)) {
+      throw new Error('The team member API returned an unexpected response.');
+    }
+    return members.map((member) => ({
+      ...member,
+      name: member.name || member.email,
+      role: member.role ? member.role[0].toUpperCase() + member.role.slice(1) : 'Member',
+      status: member.status ? member.status[0].toUpperCase() + member.status.slice(1) : 'Active',
+      joinedDate: member.joinedAt || member.createdAt || '',
+      folders: Array.isArray(member.folders) ? member.folders : [],
+    }));
   },
 
   // POST /api/users/invitations
-  inviteMember: async (memberData) => {
-    return request('/users/invitations', {
-      method: 'POST',
-      body: JSON.stringify(memberData),
-    });
+  inviteMember: async ({ email, role = 'member' }) => {
+    return request(
+      '/users/invitations',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, role }),
+      },
+      AUTH_API_BASE_URL
+    );
   },
 
   // DELETE /api/users/:id
   removeMember: async (id) => {
-    return request(`/users/${id}`, { method: 'DELETE' });
+    return request(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' }, AUTH_API_BASE_URL);
   },
 };
 
 // ==========================================
-// 5. Feedback API (Documentation Chapter 5.8)
+// 5. RAG AI Assistant API (Infera-RAG-Backend - Port 7000)
+// ==========================================
+export const ragApi = {
+  createConversation: async (title = 'New Conversation') => {
+    return request(
+      '/conversations',
+      { method: 'POST', body: JSON.stringify({ title }) },
+      RAG_API_BASE_URL
+    );
+  },
+
+  // POST /api/rag/ask
+  askQuestion: async ({ question, conversationId }) => {
+    return request(
+      '/rag/ask',
+      {
+        method: 'POST',
+        body: JSON.stringify({ question, conversationId }),
+      },
+      RAG_API_BASE_URL
+    );
+  },
+
+  // GET /api/conversations
+  getConversations: async () => {
+    const conversations = await request('/conversations', {}, RAG_API_BASE_URL);
+    if (!Array.isArray(conversations)) {
+      throw new Error('The conversation API returned an unexpected response.');
+    }
+    return conversations;
+  },
+
+  // GET /api/conversations/:id/messages
+  getConversationMessages: async (conversationId) => {
+    const messages = await request(`/conversations/${encodeURIComponent(conversationId)}/messages`, {}, RAG_API_BASE_URL);
+    if (!Array.isArray(messages)) {
+      throw new Error('The conversation message API returned an unexpected response.');
+    }
+    return messages;
+  },
+
+  // DELETE /api/conversations/:id
+  deleteConversation: async (conversationId) => {
+    return request(`/conversations/${encodeURIComponent(conversationId)}`, { method: 'DELETE' }, RAG_API_BASE_URL);
+  },
+};
+
+// ==========================================
+// 6. Feedback API
 // ==========================================
 export const feedbackApi = {
-  // GET /api/admin/feedback
   getFeedback: async () => {
-    return request('/admin/feedback');
+    return request('/admin/feedback', {}, RAG_API_BASE_URL);
   },
 };
