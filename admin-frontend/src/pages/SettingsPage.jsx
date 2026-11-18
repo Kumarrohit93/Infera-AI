@@ -1,6 +1,7 @@
-import React, { useState, useRef, useId } from 'react';
+import { useState, useRef, useId } from 'react';
 import { motion } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authApi } from '../services/api';
 import {
   Building2,
   Cpu,
@@ -10,7 +11,6 @@ import {
   Upload,
   Save,
   LogOut,
-  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -109,6 +109,11 @@ export default function SettingsPage() {
   const logoInputRef = useRef(null);
   const logoGradId = useId();
   const [activeTab, setActiveTab] = useState('organization');
+  const { data: account } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: authApi.getCurrentUser,
+    retry: false,
+  });
 
   const [savedInitial] = useState(() => loadSavedSettings());
 
@@ -117,6 +122,12 @@ export default function SettingsPage() {
     ...DEFAULT_ORG,
     ...(savedInitial?.orgData || {})
   }));
+  const [orgData, setOrgData] = useState({
+    name: '',
+    domain: '',
+    logoName: 'No organization logo uploaded',
+    logoPreview: null
+  });
 
   // Tab 2: AI & Model State
   const [aiData, setAiData] = useState(() => ({
@@ -141,6 +152,46 @@ export default function SettingsPage() {
   const [profileData, setProfileData] = useState(() => ({
     ...DEFAULT_PROFILE,
     ...(savedInitial?.profileData || {}),
+  const integrations = [
+    {
+      id: 'gdrive',
+      name: 'Google Drive Workspace',
+      status: 'Unavailable',
+      description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
+      actionText: 'Not available',
+      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
+    },
+    {
+      id: 'slack',
+      name: 'Slack Knowledge Bot',
+      status: 'Unavailable',
+      description: 'Allow team members to query @InferaAI directly inside Slack channels.',
+      actionText: 'Not available',
+      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
+    },
+    {
+      id: 'notion',
+      name: 'Notion Internal Wiki',
+      status: 'Unavailable',
+      description: 'Ingest engineering handbooks and operational SOP pages automatically.',
+      actionText: 'Not available',
+      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+    },
+    {
+      id: 'sharepoint',
+      name: 'Microsoft SharePoint',
+      status: 'Unavailable',
+      description: 'Enterprise connector for legal and compliance document libraries.',
+      actionText: 'Not available',
+      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+    }
+  ];
+
+  // Tab 5: General / Admin Profile State
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    role: 'Workspace Admin',
     currentPassword: '',
     newPassword: ''
   }));
@@ -181,6 +232,8 @@ export default function SettingsPage() {
 
   const handleSave = (message) => {
     saveSettingsMutation.mutate(message);
+  const handleSave = () => {
+    toast.error('Settings changes are not saved: the backend does not expose a settings endpoint yet.');
   };
 
   const handleLogoUpload = (e) => {
@@ -232,8 +285,11 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('infera_admin_query_cache_v1');
+    queryClient.clear();
     toast.success('Logged out successfully.');
     navigate('/login', { replace: true });
   };
@@ -247,6 +303,9 @@ export default function SettingsPage() {
         </h2>
         <p className="text-xs sm:text-sm text-[#77716B] mt-1">
           Manage organization branding, AI retrieval hyperparameters, permissions, and account security.
+        </p>
+        <p className="mt-3 rounded-lg border border-[#E8DCD1] bg-white px-3 py-2 text-xs text-[#77716B]">
+          Organization profile details are loaded from the auth backend. Settings, password changes, and external integrations are not writable because these backend endpoints are not implemented yet.
         </p>
       </div>
 
@@ -299,7 +358,7 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    value={orgData.name}
+                    value={orgData.name || account?.organization?.name || ''}
                     onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                   />
@@ -391,15 +450,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Organization settings saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Organization Settings</span>
                 </button>
               </div>
@@ -540,15 +594,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('AI & Model parameters saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save AI Configuration</span>
                 </button>
               </div>
@@ -657,15 +706,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Access control policies saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Permissions</span>
                 </button>
               </div>
@@ -681,7 +725,7 @@ export default function SettingsPage() {
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-6"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Connected Enterprise Integrations</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">External Integrations</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Sync external cloud repositories and pipe AI retrieval tools to messaging tools.
                 </p>
@@ -724,6 +768,9 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => handleIntegrationAction(item)}
                           className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
+                          type="button"
+                          disabled
+                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border opacity-60 cursor-not-allowed ${item.actionStyle}`}
                         >
                           {item.actionText}
                         </button>
@@ -755,7 +802,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Full Name</label>
                     <input
                       type="text"
-                      value={profileData.name}
+                      value={profileData.name || account?.user?.name || ''}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -765,7 +812,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Email</label>
                     <input
                       type="email"
-                      value={profileData.email}
+                      value={profileData.email || account?.user?.email || ''}
                       onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -776,7 +823,7 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       disabled
-                      value={profileData.role}
+                      value={profileData.role || (account?.role === 'admin' ? 'Workspace Admin' : account?.role || '')}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2]/60 border border-[#E8DCD1] rounded-[10px] text-[#77716B] font-medium cursor-not-allowed"
                     />
                   </div>
@@ -785,7 +832,7 @@ export default function SettingsPage() {
                 <div className="flex justify-end mt-4">
                   <button
                     type="button"
-                    onClick={() => handleSave('Admin profile updated.')}
+                    onClick={handleSave}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -830,8 +877,7 @@ export default function SettingsPage() {
                         toast.error('Please enter both current and new passwords.');
                         return;
                       }
-                      handleSave('Administrator password updated successfully.');
-                      setProfileData({ ...profileData, currentPassword: '', newPassword: '' });
+                      handleSave();
                     }}
                     className="px-4 py-2 rounded-[8px] bg-white hover:bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-all duration-150 active:scale-95 cursor-pointer"
                   >

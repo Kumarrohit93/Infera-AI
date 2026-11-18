@@ -21,7 +21,7 @@ import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
-export const DEPARTMENTS = [
+const DEPARTMENTS = [
   'HR',
   'IT',
   'Finance',
@@ -64,33 +64,29 @@ const itemVariants = {
 export default function AddMemberPage() {
   const queryClient = useQueryClient();
 
-  // TanStack Query: Fetch Organization Employees (Port 3000)
-  const { data: employees = [], isLoading, isFetching } = useQuery({
+  const { data: employees = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['employees'],
-    queryFn: async () => {
-      const res = await employeeApi.getEmployees();
-      return Array.isArray(res) ? res : [];
-    },
+    queryFn: employeeApi.getEmployees,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // TanStack Query: Fetch Departments (fallback to default DEPARTMENTS if empty/offline)
-  const { data: serverDepartments = [] } = useQuery({
+  const { data: serverDepartments = [], isError: departmentsError, error: departmentsQueryError } = useQuery({
     queryKey: ['departments'],
-    queryFn: async () => {
-      try {
-        const res = await departmentApi.getDepartments();
-        return Array.isArray(res) ? res : [];
-      } catch {
-        return [];
-      }
-    },
+    queryFn: departmentApi.getDepartments,
     initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
+
+  React.useEffect(() => {
+    if (isError) toast.error(error?.message || 'Failed to load employees.');
+  }, [isError, error]);
+
+  React.useEffect(() => {
+    if (departmentsError) toast.error(departmentsQueryError?.message || 'Failed to load departments.');
+  }, [departmentsError, departmentsQueryError]);
 
   const departmentOptions =
     serverDepartments.length > 0

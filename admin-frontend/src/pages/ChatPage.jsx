@@ -10,7 +10,6 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
-  ChevronDown,
   X,
   MessageSquare,
   BookOpen,
@@ -24,6 +23,7 @@ import toast from 'react-hot-toast';
 export default function ChatPage() {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
 
   // Sync live folders with FoldersPage / DocumentsPage cache (Zero Mock Data)
   const { data: serverFolders = [] } = useQuery({
@@ -99,8 +99,8 @@ export default function ChatPage() {
     toast.success('Started a new chat session.');
   };
 
-  // Handle Select Conversation
-  const handleSelectConv = (convId) => {
+  const handleSelectConv = async (convId) => {
+    if (convId === activeConvId || isLoadingMessages || isGenerating) return;
     setActiveConvId(convId);
   };
 
@@ -114,7 +114,7 @@ export default function ChatPage() {
   };
 
   // Handle Send Question
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     if (e) e.preventDefault();
     const query = queryInput.trim();
     if (!query || isGenerating) return;
@@ -171,7 +171,14 @@ export default function ChatPage() {
         text: `Based on your indexed organization documents in ${scopeLabel}:\n\nHere is the verified guidance for: "${query}". Documented procedures specify that team members must follow standard approval policies.`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         userRating: null,
-        citations: []
+        citations: Array.isArray(result.sources)
+          ? result.sources.map((s) => ({
+              id: s.sourceId,
+              title: s.documentName,
+              score: `${Math.round((s.similarity || 0.8) * 100)}%`,
+              excerpt: `Section: ${s.heading || 'General'} | Page: ${s.pageNumber || 'N/A'}`
+            }))
+          : []
       };
 
       setConversations((prev) =>
@@ -181,8 +188,14 @@ export default function ChatPage() {
             : conv
         )
       );
+      setMessages((prev) => [...prev, aiResponse]);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (err) {
+      console.error('RAG Error:', err);
+      toast.error(err?.message || 'Failed to query RAG assistant');
+    } finally {
       setIsGenerating(false);
-    }, 1000);
+    }
   };
 
   // Feedback Handler
@@ -218,6 +231,29 @@ export default function ChatPage() {
               <span>New Chat</span>
             </button>
           </div>
+  const handleRating = () => {
+    toast.error('Response ratings are not yet supported by the RAG backend.');
+  };
+
+  return (
+    <div className="h-[calc(100dvh-6.2rem)] sm:h-[calc(100vh-6.5rem)] flex flex-col lg:flex-row bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] sm:rounded-[20px] shadow-sm overflow-hidden relative">
+      {/* ================= LEFT SIDEBAR PANEL: CONVERSATION LIST ================= */}
+      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E8DCD1] bg-[#FAF7F2]/60 flex flex-col shrink-0">
+        {/* + New Chat Button */}
+        <div className="p-4 border-b border-[#E8DCD1]">
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Chat</span>
+          </button>
+
+          <p className="mt-3.5 text-[11px] leading-relaxed text-[#77716B]">
+            Answers use the documents your administrator account is permitted to access.
+          </p>
+        </div>
 
           <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-3 space-y-1.5 max-h-44 lg:max-h-none">
             <p className="px-2 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
@@ -295,6 +331,17 @@ export default function ChatPage() {
               })
             )}
           </div>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FAF7F2] text-[#96613F] border border-[#E8DCD1] shrink-0">
+                      {conv.messageCount || 0} messages
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#77716B] mt-1.5 pl-6">
+                    {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                  </p>
+                </button>
+              );
+            })
+          )}
         </div>
 
         {/* ================= RIGHT MAIN CHAT VIEWPORT ================= */}
@@ -323,6 +370,23 @@ export default function ChatPage() {
                 <p className="text-xs text-[#77716B] mt-1.5 leading-relaxed">
                   Ask questions grounded exclusively in your indexed organization documents. Real-time citations and source page cards will appear here.
                 </p>
+          </div>
+          <span className="hidden sm:inline text-[11px] text-[#77716B] shrink-0">
+            Role-based document access
+          </span>
+        </div>
+
+        {/* Messages Stream / Clean Empty State */}
+        <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-4 sm:p-6 space-y-6 bg-[#FAF7F2]/30">
+          {isLoadingMessages ? (
+            <div className="h-full flex items-center justify-center text-xs text-[#77716B]">
+              Loading conversation…
+            </div>
+          ) : messages.length === 0 ? (
+            /* Clean Center Welcome Banner (Zero fake messages) */
+            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-10">
+              <div className="w-14 h-14 rounded-2xl bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shadow-sm mb-4">
+                <BookOpen className="w-7 h-7" />
               </div>
             ) : (
               messages.map((msg) => (
