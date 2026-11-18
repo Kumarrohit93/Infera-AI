@@ -122,12 +122,6 @@ export default function SettingsPage() {
     ...DEFAULT_ORG,
     ...(savedInitial?.orgData || {})
   }));
-  const [orgData, setOrgData] = useState({
-    name: '',
-    domain: '',
-    logoName: 'No organization logo uploaded',
-    logoPreview: null
-  });
 
   // Tab 2: AI & Model State
   const [aiData, setAiData] = useState(() => ({
@@ -142,7 +136,7 @@ export default function SettingsPage() {
   }));
 
   // Tab 4: Integrations State
-  const [integrations, setIntegrations] = useState(() =>
+  const [integrations] = useState(() =>
     Array.isArray(savedInitial?.integrations)
       ? savedInitial.integrations
       : DEFAULT_INTEGRATIONS
@@ -151,49 +145,7 @@ export default function SettingsPage() {
   // Tab 5: General / Admin Profile State
   const [profileData, setProfileData] = useState(() => ({
     ...DEFAULT_PROFILE,
-    ...(savedInitial?.profileData || {}),
-  const integrations = [
-    {
-      id: 'gdrive',
-      name: 'Google Drive Workspace',
-      status: 'Unavailable',
-      description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
-      actionText: 'Not available',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
-    },
-    {
-      id: 'slack',
-      name: 'Slack Knowledge Bot',
-      status: 'Unavailable',
-      description: 'Allow team members to query @InferaAI directly inside Slack channels.',
-      actionText: 'Not available',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
-    },
-    {
-      id: 'notion',
-      name: 'Notion Internal Wiki',
-      status: 'Unavailable',
-      description: 'Ingest engineering handbooks and operational SOP pages automatically.',
-      actionText: 'Not available',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    },
-    {
-      id: 'sharepoint',
-      name: 'Microsoft SharePoint',
-      status: 'Unavailable',
-      description: 'Enterprise connector for legal and compliance document libraries.',
-      actionText: 'Not available',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    }
-  ];
-
-  // Tab 5: General / Admin Profile State
-  const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    role: 'Workspace Admin',
-    currentPassword: '',
-    newPassword: ''
+    ...(savedInitial?.profileData || {})
   }));
 
   const persistSettings = (overrides = {}) => {
@@ -217,22 +169,8 @@ export default function SettingsPage() {
     }
   };
 
-  // TanStack Mutation for saving settings
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (message) => {
-      // Persist locally until PATCH /api/organizations/current is connected
-      persistSettings();
-      return message;
-    },
-    onSuccess: (message) => {
-      queryClient.invalidateQueries({ queryKey: ['organization'] });
-      toast.success(message);
-    }
-  });
-
-  const handleSave = (message) => {
-    saveSettingsMutation.mutate(message);
   const handleSave = () => {
+    persistSettings();
     toast.error('Settings changes are not saved: the backend does not expose a settings endpoint yet.');
   };
 
@@ -257,31 +195,6 @@ export default function SettingsPage() {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
-  };
-
-  const handleIntegrationAction = (item) => {
-    if (item.actionText === 'Configure') {
-      toast.success(`${item.name} is connected and active.`);
-      return;
-    }
-
-    const willConnect = item.status !== 'Connected';
-    const updatedList = integrations.map((intItem) =>
-      intItem.id === item.id
-        ? {
-            ...intItem,
-            status: willConnect ? 'Connected' : 'Available',
-            actionText: willConnect ? 'Disconnect' : 'Connect',
-            actionStyle: willConnect
-              ? 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
-              : 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-          }
-        : intItem
-    );
-
-    setIntegrations(updatedList);
-    persistSettings({ integrations: updatedList });
-    toast.success(`${item.name} ${willConnect ? 'connected' : 'disconnected'}.`);
   };
 
   const handleLogout = () => {
@@ -765,9 +678,6 @@ export default function SettingsPage() {
 
                       <div className="flex justify-end pt-3 border-t border-[#E8DCD1]">
                         <button
-                          type="button"
-                          onClick={() => handleIntegrationAction(item)}
-                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
                           type="button"
                           disabled
                           className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border opacity-60 cursor-not-allowed ${item.actionStyle}`}

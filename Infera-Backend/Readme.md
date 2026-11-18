@@ -15,7 +15,16 @@ npm i express pg dotenv cors helmet jsonwebtoken bcryptjs zod multer
 
 ```bash
 psql -U <db_user> -d infera -f db/schema.sql
+psql -U <db_user> -d infera -f db/migration_employees.sql
 psql -U <db_user> -d infera -f db/chat_schema.sql
+psql -U <db_user> -d infera -f db/invitations.sql
+```
+
+If the database was already initialized, apply these idempotent schema files
+against the same database to enable the employee directory and invitations:
+
+```bash
+psql -U <db_user> -d infera -f db/migration_employees.sql
 psql -U <db_user> -d infera -f db/invitations.sql
 ```
 
@@ -29,6 +38,7 @@ JWT_REFRESH_SECRET=<another random string>
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 FRONTEND_URL=http://localhost:5001
+CORS_ORIGINS=http://localhost:5001,http://localhost:5173
 INVITATION_EXPIRES_DAYS=7
 ```
 
@@ -39,11 +49,17 @@ npm install
 node app.js
 ```
 
+The backend loads this folder's `.env` regardless of the terminal's current
+directory and applies the idempotent invitations schema before listening.
+Local admin (`localhost:5001`) and member (`localhost:5173`) frontends are
+allowed by default; add deployed frontend origins to `CORS_ORIGINS` as needed.
+
 ## 3.) Tables
 
 | File | Tables |
 |---|---|
-| `db/schema.sql` | organizations, users, organization_members |
+| `db/schema.sql` | organizations, users, departments, organization_members |
+| `db/migration_employees.sql` | Adds employee columns and seeds seven standard departments for existing organizations |
 | `db/chat_schema.sql` | chats, messages |
 | `db/invitations.sql` | invitations |
 

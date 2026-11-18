@@ -78,16 +78,19 @@ export const documentApi = {
       const filename = document.originalFilename || document.name || '';
       const rawStatus = (document.status || 'pending').toLowerCase();
       const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+      const uploadedAt = document.uploadedAt || document.uploadDate;
+      const parsedUploadDate = uploadedAt ? new Date(uploadedAt) : null;
 
       return {
         ...document,
         name: filename,
         extension: filename.includes('.') ? filename.split('.').pop().toUpperCase() : '',
         folder: document.folderName || document.folder || '',
-        size: `${((document.sizeBytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
-        uploadDate: document.uploadedAt
-          ? new Date(document.uploadedAt).toLocaleDateString()
+        size: document.size || `${((document.sizeBytes || 0) / (1024 * 1024)).toFixed(1)} MB`,
+        uploadDate: parsedUploadDate && !Number.isNaN(parsedUploadDate.getTime())
+          ? parsedUploadDate.toLocaleDateString()
           : '',
+        uploadStatus: 'Completed',
         status,
       };
     });

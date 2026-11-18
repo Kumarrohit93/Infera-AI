@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const pool = require("./Config/db");
 const { initDb } = require("./Config/initDb");
@@ -12,9 +13,27 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
+const allowedOrigins = new Set(
+    [
+        "http://localhost:5001",
+        "http://localhost:5173",
+        process.env.CORS_ORIGIN,
+        process.env.CORS_ORIGINS,
+    ]
+        .filter(Boolean)
+        .flatMap((origins) => origins.split(","))
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+);
+
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN || "http://localhost:5001",
+        origin(origin, callback) {
+            if (!origin || allowedOrigins.has(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+        },
         credentials: true,
     })
 );

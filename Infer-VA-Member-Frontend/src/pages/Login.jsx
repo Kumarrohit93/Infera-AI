@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { login as authenticateMember } from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Modals States
@@ -16,29 +18,32 @@ export default function Login() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
 
-  // Hardcoded valid credentials for testing
-  const VALID_EMAIL = "member@infera.ai";
-  const VALID_PASSWORD = "member#123";
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setLoading(true);
 
-    // Check hardcoded credentials
-    if (email === VALID_EMAIL && password === VALID_PASSWORD) {
-      // Store session data in localStorage
-      localStorage.setItem("accessToken", "mock_member_token_xyz789");
-      localStorage.setItem(
-        "user",
-        JSON.stringify({ email: VALID_EMAIL, role: "member" })
-      );
+    try {
+      const { accessToken, user } = await authenticateMember({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-      // Navigate to dashboard
-      navigate("/dashboard");
-    } else {
+      if (user.role !== "member") {
+        throw new Error("This account does not have member access.");
+      }
+
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(user));
+      navigate("/dashboard", { replace: true });
+    } catch (error) {
       setErrorMessage(
-        "Invalid email or password! Please check your credentials and try again."
+        error instanceof Error
+          ? error.message
+          : "Unable to sign in. Please try again."
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -356,12 +361,14 @@ export default function Login() {
               {/* Login Button */}
               <button
                 type="submit"
+                disabled={loading}
                 className="h-14 w-full rounded-xl bg-[#722F37]
                   text-base font-semibold text-white shadow-lg
                   transition-all duration-300
-                  hover:-translate-y-1 hover:bg-[#5B242C]"
+                  hover:-translate-y-1 hover:bg-[#5B242C]
+                  disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Login →
+                {loading ? "Signing in..." : "Login →"}
               </button>
             </form>
 

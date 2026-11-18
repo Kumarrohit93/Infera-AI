@@ -118,16 +118,44 @@ async function createFolder({ organizationId, userId, name, description, members
   }
 }
 
-async function listFolders({ organizationId, search }) {
+async function listFolders({ organizationId, userId, role = "member", search }) {
   const values = [organizationId];
-  let filter = "";
+  const filters = [];
+
+  if (role !== "admin") {
+    values.push(userId);
+    filters.push(`EXISTS (
+      SELECT 1 FROM folder_permissions fp
+      WHERE fp.folder_id = f.id
+        AND fp.organization_id = f.organization_id
+        AND fp.user_id = $${values.length}
+        AND (fp.expires_at IS NULL OR fp.expires_at > NOW())
+    )`);
+  }
+
   if (search) {
     values.push(search);
-    filter = "AND position(lower($2) in lower(f.name)) > 0";
+    filters.push(`position(lower($${values.length}) in lower(f.name)) > 0`);
   }
+
+  const membersColumn = role === "admin"
+    ? `(SELECT COALESCE(json_agg(u.id::text), '[]'::json)
+         FROM folder_permissions fp
+         JOIN users u ON u.id = fp.user_id
+        WHERE fp.folder_id = f.id)`
+    : "'[]'::json";
+
   const { rows } = await pool.query(
-    `${SELECT_FOLDER}
-      WHERE f.organization_id = $1 AND f.parent_folder_id IS NULL ${filter}
+    `SELECT f.id, f.name, f.description, f.created_at, f.updated_at,
+            (SELECT count(*)::int
+               FROM documents d
+              WHERE d.folder_id = f.id
+                AND d.organization_id = f.organization_id) AS document_count,
+            ${membersColumn} AS members
+       FROM folders f
+      WHERE f.organization_id = $1
+        AND f.parent_folder_id IS NULL
+        ${filters.map((filter) => `AND ${filter}`).join("\n")}
       ORDER BY lower(f.name)`,
     values
   );

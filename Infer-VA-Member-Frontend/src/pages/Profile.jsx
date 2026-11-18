@@ -1,6 +1,10 @@
-import { User, Mail, Shield, Building, Calendar } from "lucide-react";
+import { Mail, Shield, Building, Calendar } from "lucide-react";
+import { getStoredUser, getUserInitials } from "../services/authService";
 
 export default function Profile() {
+  const member = getStoredUser() || {};
+  const memberName = member.name || "Member";
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
@@ -11,11 +15,13 @@ export default function Profile() {
       <div className="rounded-3xl border border-[#D7A781]/40 bg-white p-8 shadow-sm space-y-6">
         <div className="flex items-center gap-5 border-b border-gray-100 pb-6">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#722F37] text-2xl font-bold text-white shadow-md">
-            VA
+            {getUserInitials(memberName)}
           </div>
           <div>
-            <h3 className="text-xl font-bold text-[#722F37]">Vibha Arora</h3>
-            <p className="text-sm text-gray-500">Member • Infera AI Workspace</p>
+            <h3 className="text-xl font-bold text-[#722F37]">{memberName}</h3>
+            <p className="text-sm text-gray-500">
+              {member.role || "Member"} • Infera AI Workspace
+            </p>
             <span className="mt-2 inline-block rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-800">
               ● Active Account
             </span>
@@ -27,7 +33,7 @@ export default function Profile() {
             <Mail className="h-5 w-5 text-[#722F37]" />
             <div>
               <p className="text-xs text-gray-500 font-medium">Email Address</p>
-              <p className="text-sm font-bold text-[#722F37]">member@infera.ai</p>
+              <p className="text-sm font-bold text-[#722F37]">{member.email || "Unavailable"}</p>
             </div>
           </div>
 

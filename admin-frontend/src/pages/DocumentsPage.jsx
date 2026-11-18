@@ -49,20 +49,10 @@ export default function DocumentsPage() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState(
-    () => searchParams.get('folder') || 'All'
-  );
+  const selectedFolderFilter = searchParams.get('folder') || 'All';
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
-
-  // Sync folder filter when navigated from FoldersPage (?folder=...)
-  useEffect(() => {
-    const folderParam = searchParams.get('folder');
-    if (folderParam) {
-      setSelectedFolderFilter(folderParam);
-    }
-  }, [searchParams]);
 
   // TanStack Query: Fetch Folders dynamically (Synchronised with FoldersPage, Zero Mock Data)
   const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
@@ -91,6 +81,10 @@ export default function DocumentsPage() {
       );
     },
     refetchOnWindowFocus: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((document) => document.status.toLowerCase() === 'processing')
+        ? 2000
+        : false,
     retry: false,
   });
 
@@ -107,6 +101,33 @@ export default function DocumentsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadingName, setCurrentUploadingName] = useState('');
+  const [recentlyUploadedIds, setRecentlyUploadedIds] = useState(() => new Set());
+  const uploadStatusTimersRef = useRef(new Map());
+
+  useEffect(() => () => {
+    uploadStatusTimersRef.current.forEach((timer) => clearTimeout(timer));
+  }, []);
+
+  const showTemporaryProcessingStatus = (documentIds) => {
+    if (documentIds.length === 0) return;
+
+    setRecentlyUploadedIds((current) => new Set([...current, ...documentIds]));
+    documentIds.forEach((documentId) => {
+      const previousTimer = uploadStatusTimersRef.current.get(documentId);
+      if (previousTimer) clearTimeout(previousTimer);
+
+      const timer = setTimeout(() => {
+        setRecentlyUploadedIds((current) => {
+          const next = new Set(current);
+          next.delete(documentId);
+          return next;
+        });
+        uploadStatusTimersRef.current.delete(documentId);
+      }, 3000);
+
+      uploadStatusTimersRef.current.set(documentId, timer);
+    });
+  };
 
   // Inspect & Delete Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
@@ -155,18 +176,24 @@ export default function DocumentsPage() {
     }, 300);
 
     try {
+      const uploadedDocumentIds = [];
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folderId', folderId);
-        await documentApi.uploadDocument(formData);
+        const result = await documentApi.uploadDocument(formData);
+        const uploadedDocument = result?.document || result;
+        if (uploadedDocument?.id) uploadedDocumentIds.push(uploadedDocument.id);
       }
 
       clearInterval(progressTimer);
       setUploadProgress(100);
 
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
-      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['documents'] }),
+        queryClient.invalidateQueries({ queryKey: ['folders'] }),
+      ]);
+      showTemporaryProcessingStatus(uploadedDocumentIds);
 
       toast.success(`${files.length} document(s) uploaded! Indexing in progress.`);
     } catch (err) {
@@ -380,10 +407,10 @@ export default function DocumentsPage() {
               value={selectedFolderFilter}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedFolderFilter(val);
                 if (val === 'All') {
-                  searchParams.delete('folder');
-                  setSearchParams(searchParams, { replace: true });
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.delete('folder');
+                  setSearchParams(nextParams, { replace: true });
                 } else {
                   setSearchParams({ folder: val }, { replace: true });
                 }
@@ -479,7 +506,9 @@ export default function DocumentsPage() {
                       <td className="px-4 py-3 text-xs text-[#77716B]">{doc.size}</td>
                       <td className="px-4 py-3 text-xs text-[#77716B]">{doc.uploadDate}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={doc.status} />
+                        <StatusBadge
+                          status={recentlyUploadedIds.has(doc.id) ? 'Processing' : doc.uploadStatus}
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1.5">

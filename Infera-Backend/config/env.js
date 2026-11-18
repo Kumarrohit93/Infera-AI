@@ -1,4 +1,6 @@
-require("dotenv").config()
+const path = require("path")
+
+require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") })
 
 const required = ["PORT", "DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"]
 

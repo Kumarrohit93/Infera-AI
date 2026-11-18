@@ -1,18 +1,13 @@
 import { useState } from "react";
-import { Search, Bell, ChevronDown, User, Settings, LogOut, Check, X } from "lucide-react";
+import { Search, Bell, ChevronDown, User, Settings, LogOut } from "lucide-react";
+import { getStoredUser, getUserInitials } from "../services/authService";
 
 export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  
-  const [invitations, setInvitations] = useState([
-    { id: 1, org: "Engineering Docs", role: "Member", time: "2h ago" },
-    { id: 2, org: "HR Policies Workspace", role: "Viewer", time: "1d ago" },
-  ]);
-
-  const handleInviteAction = (id) => {
-    setInvitations(invitations.filter((inv) => inv.id !== id));
-  };
+  const member = getStoredUser() || {};
+  const memberName = member.name || "Member";
+  const memberEmail = member.email || "";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#D7A781]/40 bg-[#F8F4E7] px-4 md:px-8">
@@ -60,44 +55,16 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
             className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-[#D7A781]/40 text-[#722F37] hover:bg-[#D7A781]/20 transition"
           >
             <Bell className="h-5 w-5" />
-            {invitations.length > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#722F37] text-[10px] font-bold text-white">
-                {invitations.length}
-              </span>
-            )}
           </button>
 
           {showNotif && (
             <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-[#D7A781]/40 bg-white p-4 shadow-xl z-50">
-              <h3 className="text-sm font-bold text-[#722F37] border-b border-gray-100 pb-2">
-                Workspace Invitations ({invitations.length})
+              <h3 className="border-b border-gray-100 pb-2 text-sm font-bold text-[#722F37]">
+                Notifications
               </h3>
-              <div className="mt-2 space-y-3 max-h-60 overflow-y-auto">
-                {invitations.length === 0 ? (
-                  <p className="text-xs text-gray-500 text-center py-4">No pending invitations</p>
-                ) : (
-                  invitations.map((inv) => (
-                    <div key={inv.id} className="rounded-xl bg-[#F8F4E7] p-3 text-xs">
-                      <p className="font-semibold text-[#722F37]">{inv.org}</p>
-                      <p className="text-gray-600 mt-0.5">Invited as {inv.role} • {inv.time}</p>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          onClick={() => handleInviteAction(inv.id)}
-                          className="flex items-center gap-1 rounded-lg bg-[#722F37] px-3 py-1 text-white hover:bg-[#5B242C]"
-                        >
-                          <Check className="h-3 w-3" /> Accept
-                        </button>
-                        <button
-                          onClick={() => handleInviteAction(inv.id)}
-                          className="flex items-center gap-1 rounded-lg bg-white border border-gray-300 px-3 py-1 text-gray-600 hover:bg-gray-100"
-                        >
-                          <X className="h-3 w-3" /> Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <p className="py-4 text-center text-xs text-gray-500">
+                No new notifications
+              </p>
             </div>
           )}
         </div>
@@ -109,17 +76,17 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
             className="flex items-center gap-2 rounded-xl bg-white border border-[#D7A781]/40 px-3 py-1.5 text-sm font-semibold text-[#722F37] hover:bg-[#D7A781]/20 transition"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#722F37] text-xs font-bold text-white">
-              VA
+              {getUserInitials(memberName)}
             </div>
-            <span className="hidden sm:inline">Vibha Arora</span>
+            <span className="hidden sm:inline">{memberName}</span>
             <ChevronDown className="h-4 w-4 text-gray-500" />
           </button>
 
           {showProfile && (
             <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-[#D7A781]/40 bg-white py-2 shadow-xl z-50 text-sm">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="font-bold text-[#722F37]">Vibha Arora</p>
-                <p className="text-xs text-gray-500">member@infera.ai</p>
+                <p className="font-bold text-[#722F37]">{memberName}</p>
+                <p className="text-xs text-gray-500">{memberEmail}</p>
               </div>
               <a href="/profile" className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-[#F8F4E7] hover:text-[#722F37]">
                 <User className="h-4 w-4" /> My Profile

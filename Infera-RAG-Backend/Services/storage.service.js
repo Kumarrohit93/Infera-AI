@@ -1,6 +1,19 @@
-const cloudinary = require("../Config/cloudinary")
+const { cloudinary, missingConfiguration } = require("../Config/cloudinary")
+
+function getConfigurationError() {
+  if (missingConfiguration.length === 0) return null
+
+  const error = new Error(
+    `Cloudinary is not configured. Set ${missingConfiguration.join(", ")} in the RAG backend environment.`
+  )
+  error.code = "CLOUDINARY_NOT_CONFIGURED"
+  return error
+}
 
 function uploadBuffer(buffer, publicId) {
+  const configurationError = getConfigurationError()
+  if (configurationError) return Promise.reject(configurationError)
+
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -16,6 +29,9 @@ function uploadBuffer(buffer, publicId) {
 }
 
 function deleteFile(publicId) {
+  const configurationError = getConfigurationError()
+  if (configurationError) return Promise.reject(configurationError)
+
   return cloudinary.uploader.destroy(publicId, {
     resource_type: "raw",
     type: "authenticated",

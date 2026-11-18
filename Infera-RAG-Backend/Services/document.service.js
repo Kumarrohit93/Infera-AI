@@ -72,7 +72,10 @@ async function uploadDocument({ organizationId, userId, folderId, file }) {
     await uploadBuffer(file.buffer, storageKey);
   } catch (err) {
     console.error("Cloudinary upload failed:", err.message);
-    throw new AppError(502, "STORAGE_ERROR", "Could not store the file");
+    if (err.code === "CLOUDINARY_NOT_CONFIGURED") {
+      throw new AppError(503, "STORAGE_NOT_CONFIGURED", err.message);
+    }
+    throw new AppError(502, "STORAGE_ERROR", "Could not store the file in Cloudinary");
   }
 
   try {

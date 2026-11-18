@@ -48,10 +48,6 @@ export default function TeamMembersPage() {
     queryKey: ['members'],
     queryFn: memberApi.getMembers,
     initialData: [],
-    queryFn: async () => {
-      const res = await memberApi.getMembers();
-      return Array.isArray(res) ? res : [];
-    },
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -60,24 +56,6 @@ export default function TeamMembersPage() {
     queryKey: ['folders'],
     queryFn: folderApi.getFolders,
     initialData: [],
-  // 2. Fetch Organization Employees (Added via AddMemberPage)
-  const { data: orgEmployees = [] } = useQuery({
-    queryKey: ['employees'],
-    queryFn: async () => {
-      const res = await employeeApi.getEmployees();
-      return Array.isArray(res) ? res : [];
-    },
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
-
-  // 3. Fetch Folders dynamically
-  const { data: serverFolders = [] } = useQuery({
-    queryKey: ['folders'],
-    queryFn: async () => {
-      const res = await folderApi.getFolders();
-      return Array.isArray(res) ? res : [];
-    },
     refetchOnWindowFocus: false,
     retry: false,
   });

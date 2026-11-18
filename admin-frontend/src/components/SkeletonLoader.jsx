@@ -1,4 +1,3 @@
-import React from 'react';
 
 export function TableSkeleton({ rows = 4, columns = 5 }) {
   return (

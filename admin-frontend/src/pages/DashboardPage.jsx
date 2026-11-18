@@ -114,7 +114,6 @@ export default function DashboardPage() {
   });
 
   // TanStack Query: Live cache connection for documents, folders and members (ZERO MOCK DATA)
-  const { data: documents = [] } = useQuery({
   const { data: account } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,

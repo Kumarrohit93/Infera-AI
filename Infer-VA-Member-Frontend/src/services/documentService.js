@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_RAG_API_URL || "http://localhost:7000/api";
+const API_URL = (import.meta.env.VITE_RAG_API_URL || "http://localhost:7000/api")
+  .replace(/\/$/, "");
 
 function getAuthHeaders() {
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -8,23 +9,46 @@ function getAuthHeaders() {
   };
 }
 
+async function getList(endpoint, resourceName) {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    headers: getAuthHeaders(),
+  });
+  const payload = await response.json().catch(() => null);
+
+  if (response.status === 401) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.location.href = "/";
+    throw new Error("Your session expired. Please sign in again.");
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.error?.message ||
+        payload?.message ||
+        `Failed to load ${resourceName}.`
+    );
+  }
+
+  if (!Array.isArray(payload?.data)) {
+    throw new Error(`The ${resourceName} API returned an unexpected response.`);
+  }
+
+  return payload.data;
+}
+
 export const documentService = {
   // Document Operations
   async getDocuments(folderId) {
-    const query = folderId && folderId !== "All" ? `?folderId=${folderId}` : "";
-    const res = await fetch(`${API_URL}/documents${query}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to fetch documents");
-    return res.json();
+    const query =
+      folderId && folderId !== "All"
+        ? `?folderId=${encodeURIComponent(folderId)}`
+        : "";
+    return getList(`/documents${query}`, "documents");
   },
 
   async getFolders() {
-    const res = await fetch(`${API_URL}/folders`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to fetch folders");
-    return res.json();
+    return getList("/folders", "folders");
   },
 
   // Conversation & Chat History Operations
@@ -83,7 +107,10 @@ export const documentService = {
     const res = await fetch(`${API_URL}/rag/ask`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ question, conversationId }),
+      body: JSON.stringify({
+        question,
+        ...(conversationId ? { conversationId } : {}),
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
