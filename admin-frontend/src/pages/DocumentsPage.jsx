@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentApi, folderApi } from '../services/api';
@@ -44,14 +44,25 @@ const itemVariants = {
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState('All');
+  const [selectedFolderFilter, setSelectedFolderFilter] = useState(
+    () => searchParams.get('folder') || 'All'
+  );
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
+
+  // Sync folder filter when navigated from FoldersPage (?folder=...)
+  useEffect(() => {
+    const folderParam = searchParams.get('folder');
+    if (folderParam) {
+      setSelectedFolderFilter(folderParam);
+    }
+  }, [searchParams]);
 
   // TanStack Query: Fetch Folders dynamically (Synchronised with FoldersPage, Zero Mock Data)
   const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
@@ -367,7 +378,16 @@ export default function DocumentsPage() {
 
             <select
               value={selectedFolderFilter}
-              onChange={(e) => setSelectedFolderFilter(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedFolderFilter(val);
+                if (val === 'All') {
+                  searchParams.delete('folder');
+                  setSearchParams(searchParams, { replace: true });
+                } else {
+                  setSearchParams({ folder: val }, { replace: true });
+                }
+              }}
               className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
             >
               <option value="All">All Folders</option>

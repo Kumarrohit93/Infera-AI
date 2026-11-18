@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { folderApi, memberApi } from '../services/api';
@@ -15,7 +16,7 @@ import {
   Trash2,
   X,
   Check,
-  Calendar,
+  Eye,
   Inbox,
   ShieldCheck
 } from 'lucide-react';
@@ -45,6 +46,7 @@ const itemVariants = {
 };
 
 export default function FoldersPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: serverFolders = [], isLoading, isFetching, isError, error } = useQuery({
@@ -360,10 +362,17 @@ export default function FoldersPage() {
                           <FileText className="w-3.5 h-3.5" />
                           {folder.docCount} {folder.docCount === 1 ? 'Document' : 'Documents'}
                         </span>
-                        <span className="text-[11px] text-[#77716B] flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {folder.createdAt}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/documents?folder=${encodeURIComponent(folder.name)}`)
+                          }
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#96613F] hover:text-[#4A3023] hover:bg-[#F3E8DC]/70 px-2 py-1 rounded-[6px] transition-colors cursor-pointer"
+                          title={`View documents in ${folder.name}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
                       </div>
 
                       {folder.members && folder.members.length > 0 && (
@@ -435,6 +444,16 @@ export default function FoldersPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(`/documents?folder=${encodeURIComponent(folder.name)}`)
+                              }
+                              className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
+                              title="View Documents"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(folder)}

@@ -34,6 +34,21 @@ import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
 import toast from 'react-hot-toast';
 
+function getStoredAdminProfile() {
+  try {
+    const raw = localStorage.getItem('infera_admin_settings_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.profileData?.name) {
+        return parsed.profileData;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return { name: 'Jiya Sharma', email: 'jiyasharma@infera.ai', role: 'Admin' };
+}
+
 // Framer motion variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -90,6 +105,16 @@ export default function DashboardPage() {
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
 
+  // Sync Admin Profile with SettingsPage -> General tab
+  const { data: adminProfile } = useQuery({
+    queryKey: ['adminProfile'],
+    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    enabled: false
+  });
+
+  // TanStack Query: Live cache connection for documents, folders and members (ZERO MOCK DATA)
+  const { data: documents = [] } = useQuery({
   const { data: account } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,
@@ -216,6 +241,7 @@ export default function DashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#25211E] tracking-tight">
+                Welcome back, {adminProfile?.name?.trim() || 'Jiya Sharma'}
                 Welcome back, {account?.user?.name || 'Admin'}
               </h2>
               <p className="text-xs sm:text-sm text-[#77716B] leading-relaxed">
