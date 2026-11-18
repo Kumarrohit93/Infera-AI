@@ -68,14 +68,9 @@ export default function DocumentsPage() {
   const { data: folders = [] } = useQuery({
     queryKey: ['folders'],
     queryFn: async () => {
-      try {
-        const res = await folderApi.getFolders();
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['folders']) ?? [];
-      }
+      const res = await folderApi.getFolders();
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -96,14 +91,9 @@ export default function DocumentsPage() {
   const { data: serverDocs = [], isLoading, isFetching } = useQuery({
     queryKey: ['documents', selectedFolderFilter],
     queryFn: async () => {
-      try {
-        const res = await documentApi.getDocuments(selectedFolderFilter);
-        return Array.isArray(res) ? res : [];
-      } catch (err) {
-        return queryClient.getQueryData(['documents', selectedFolderFilter]) ?? [];
-      }
+      const res = await documentApi.getDocuments(selectedFolderFilter);
+      return Array.isArray(res) ? res : [];
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
@@ -136,8 +126,8 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
     },
-    onError: (_err, docId) => {
-      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to delete document.');
     }
   });
 
