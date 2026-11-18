@@ -79,7 +79,6 @@ export default function DocumentsPage() {
         selectedFolderFilter === 'All' ? 'All' : selectedFolder?.id || selectedFolderFilter
       );
     },
-    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });

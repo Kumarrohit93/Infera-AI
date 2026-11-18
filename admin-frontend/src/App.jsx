@@ -16,7 +16,7 @@ import ChatPage from './pages/ChatPage';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes fresh cache
+      staleTime: 0, // always refetch from the backend when a page mounts
       retry: 1,
       refetchOnWindowFocus: false,
     },
