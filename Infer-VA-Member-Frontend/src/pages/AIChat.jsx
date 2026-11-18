@@ -15,54 +15,28 @@ export default function AIChat() {
   const getBotResponse = (userMsg) => {
     const cleanMsg = userMsg.trim().toLowerCase();
     const greetings = ["hi", "hii", "hiii", "hello", "hey", "good morning", "good afternoon"];
-    
+
     if (greetings.includes(cleanMsg)) {
       return "Hello Vibha! 👋 How can I help you explore your workspace documents today?";
     }
+
     if (cleanMsg.includes("how are you")) {
       return "I'm operating at peak performance! What document or topic would you like to search today?";
     }
+
     return `Based on your permitted workspace documents, here is the relevant analysis regarding "${userMsg}". (Connect backend RAG API for live database retrieval.)`;
   };
 
-  const loadConversations = async () => {
-    setIsLoadingConversations(true);
-    try {
-      const list = await documentService.getConversations();
-      setConversations(list);
-    } catch (err) {
-      console.error("Error loading conversations:", err);
-      // Non-blocking error for conversation list
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  };
+  const handleSend = (event) => {
+    event.preventDefault();
 
-  // 2. Select a Conversation: Load its persistent messages and citations
-  const handleSelectConversation = async (convId) => {
-    if (convId === activeConversationId || isLoading) return;
-    setActiveConversationId(convId);
-    setError(null);
-    setSidebarOpen(false);
+    const userText = input.trim();
+    if (!userText) return;
 
-    try {
-      setIsLoading(true);
-      const historyMessages = await documentService.getConversationMessages(convId);
-      setMessages(historyMessages);
-    } catch (err) {
-      console.error("Error loading messages:", err);
-      setError("Failed to load conversation messages from database.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-    const userText = input;
     setMessages((prev) => [...prev, { id: Date.now(), sender: "user", text: userText }]);
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response delay with loading animation
     setTimeout(() => {
       const reply = getBotResponse(userText);
       setMessages((prev) => [...prev, { id: Date.now() + 1, sender: "ai", text: reply }]);
@@ -89,8 +63,6 @@ export default function AIChat() {
       <div className="flex-1 space-y-4 overflow-y-auto pr-2">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-            
-            {/* Infera Logo for AI messages */}
             {msg.sender === "ai" && (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1 shadow-sm">
                 <img src="/infera-logo.jpeg" alt="Infera" className="h-full w-full object-contain rounded-lg" />
@@ -109,7 +81,6 @@ export default function AIChat() {
           </div>
         ))}
 
-        {/* Loading Animation */}
         {isLoading && (
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1">
@@ -124,7 +95,6 @@ export default function AIChat() {
         )}
       </div>
 
-      {/* Input Box */}
       <form onSubmit={handleSend} className="mt-4 flex items-center gap-3 pt-2 border-t border-[#D7A781]/30">
         <input
           type="text"

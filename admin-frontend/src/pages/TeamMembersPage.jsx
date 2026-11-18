@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { memberApi, folderApi, employeeApi } from '../services/api';
-import { DEPARTMENTS } from './AddMemberPage';
+import { memberApi, folderApi } from '../services/api';
 import {
   Users,
   UserPlus,
@@ -45,9 +44,10 @@ const itemVariants = {
 export default function TeamMembersPage() {
   const queryClient = useQueryClient();
 
-  // 1. Fetch Invited / Active Team Members (Zero Mock Data)
-  const { data: serverMembers = [], isLoading, isFetching } = useQuery({
+  const { data: serverMembers = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['members'],
+    queryFn: memberApi.getMembers,
+    initialData: [],
     queryFn: async () => {
       const res = await memberApi.getMembers();
       return Array.isArray(res) ? res : [];
@@ -56,6 +56,10 @@ export default function TeamMembersPage() {
     retry: false,
   });
 
+  const { data: serverFolders = [], isError: foldersError, error: foldersErrorDetail } = useQuery({
+    queryKey: ['folders'],
+    queryFn: folderApi.getFolders,
+    initialData: [],
   // 2. Fetch Organization Employees (Added via AddMemberPage)
   const { data: orgEmployees = [] } = useQuery({
     queryKey: ['employees'],
@@ -78,17 +82,27 @@ export default function TeamMembersPage() {
     retry: false,
   });
 
-  const availableFolders = serverFolders
-    .map((f) => (typeof f === 'string' ? f : f?.name))
-    .filter(Boolean);
-
-  const [members, setMembers] = useState([]);
+  const members = serverMembers.map((member) => ({
+      ...member,
+      folders: serverFolders
+        .filter((folder) =>
+          folder.members.some((entry) => {
+            const value = String(entry).toLowerCase();
+            return [member.id, member.email, member.name]
+              .filter(Boolean)
+              .some((candidate) => String(candidate).toLowerCase() === value);
+          })
+        )
+        .map((folder) => folder.name),
+    }));
 
   useEffect(() => {
-    if (serverMembers) {
-      setMembers(serverMembers);
-    }
-  }, [serverMembers]);
+    if (isError) toast.error(error?.message || 'Failed to load team members.');
+  }, [isError, error]);
+
+  useEffect(() => {
+    if (foldersError) toast.error(foldersErrorDetail?.message || 'Failed to load folders.');
+  }, [foldersError, foldersErrorDetail]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -98,57 +112,69 @@ export default function TeamMembersPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [memberToDelete, setMemberToDelete] = useState(null);
 
-  // Invite / Edit Form State (Department -> Employee -> Folders)
-  const [selectedDepartment, setSelectedDepartment] = useState(DEPARTMENTS[0]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
   const [selectedFolders, setSelectedFolders] = useState([]);
 
-  // Employees filtered by selected department
-  const departmentEmployees = orgEmployees.filter(
-    (emp) => emp.department === selectedDepartment
-  );
-
-  // Auto-select first employee in department when department changes
-  useEffect(() => {
-    if (isInviteModalOpen) {
-      if (departmentEmployees.length > 0) {
-        const stillValid = departmentEmployees.some((e) => e.id === selectedEmployeeId);
-        if (!selectedEmployeeId || !stillValid) {
-          setSelectedEmployeeId(departmentEmployees[0].id);
-        }
-      } else {
-        setSelectedEmployeeId('');
-      }
-    }
-  }, [selectedDepartment, isInviteModalOpen, orgEmployees]);
-
-  // Invite Mutation
   const inviteMemberMutation = useMutation({
     mutationFn: memberApi.inviteMember,
-    onSuccess: (newMember, variables) => {
+    onSuccess: (_invitation, variables) => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
-      toast.success(`Invitation sent to ${newMember?.email || variables.email}`);
+      toast.success(`Invitation created for ${variables.email}.`);
     },
     onError: (err) => {
+      toast.error(err?.message || 'Failed to create invitation.');
       toast.error(err?.message || 'Failed to send invitation.');
     }
   });
 
-  // Remove Mutation
   const removeMemberMutation = useMutation({
     mutationFn: memberApi.removeMember,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
+      toast.success('Team member removed.');
     },
     onError: (err) => {
+      toast.error(err?.message || 'Failed to remove team member.');
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    }
+  });
+
+  const updateAccessMutation = useMutation({
+    mutationFn: async ({ member, folderNames }) => {
+      const identifiers = [member.id, member.email, member.name]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+      const updates = serverFolders.flatMap((folder) => {
+        const currentMembers = folder.members || [];
+        const hasAccess = currentMembers.some((entry) =>
+          identifiers.includes(String(entry).toLowerCase())
+        );
+        const shouldHaveAccess = folderNames.includes(folder.name);
+        if (hasAccess === shouldHaveAccess) return [];
+
+        const nextMembers = currentMembers.filter(
+          (entry) => !identifiers.includes(String(entry).toLowerCase())
+        );
+        if (shouldHaveAccess) nextMembers.push(member.email || member.name);
+        return [folderApi.updateFolder(folder.id, { members: nextMembers })];
+      });
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      toast.success(`Folder access updated for "${editingMember?.name}".`);
+      setEditingMember(null);
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to update folder access.');
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
       toast.error(err?.message || 'Failed to remove member.');
     }
   });
 
   const handleOpenInviteModal = () => {
-    setSelectedDepartment(DEPARTMENTS[0]);
-    setSelectedEmployeeId('');
-    setSelectedFolders([]);
+    setInviteEmail('');
     setIsInviteModalOpen(true);
   };
 
@@ -169,54 +195,33 @@ export default function TeamMembersPage() {
     e.preventDefault();
 
     if (editingMember) {
-      const updatedList = members.map((m) =>
-        m.id === editingMember.id
-          ? { ...m, folders: selectedFolders }
-          : m
-      );
-      setMembers(updatedList);
-      queryClient.setQueryData(['members'], updatedList);
-      toast.success(`Folder access updated for "${editingMember.name}".`);
-      setEditingMember(null);
+      updateAccessMutation.mutate({ member: editingMember, folderNames: selectedFolders });
       return;
     }
 
-    const chosenEmployee = departmentEmployees.find((emp) => emp.id === selectedEmployeeId);
-    if (!chosenEmployee) {
-      toast.error('Please select an organization employee to invite.');
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      toast.error('Enter the email address to invite.');
       return;
     }
 
-    const alreadyInvited = members.some(
-      (m) => m.email.toLowerCase() === chosenEmployee.email.toLowerCase()
-    );
-    if (alreadyInvited) {
-      toast.error(`${chosenEmployee.name} has already been invited.`);
+    if (members.some((member) => member.email?.toLowerCase() === email)) {
+      toast.error(`${email} is already in this organization.`);
       return;
     }
 
-    inviteMemberMutation.mutate({
-      employeeId: chosenEmployee.employeeId,
-      name: chosenEmployee.name,
-      email: chosenEmployee.email,
-      department: chosenEmployee.department,
-      role: 'Member',
-      folderIds: selectedFolders
-    });
+    inviteMemberMutation.mutate({ email, role: 'member' });
     setIsInviteModalOpen(false);
   };
 
-  const handleDeleteMember = (memberId, memberName) => {
+  const handleDeleteMember = (memberId) => {
     removeMemberMutation.mutate(memberId);
-    setMembers((prev) => prev.filter((m) => m.id !== memberId));
-    queryClient.setQueryData(['members'], (prev = []) => prev.filter((m) => m.id !== memberId));
-    toast.error(`Member "${memberName}" removed.`);
   };
 
   const filteredMembers = members.filter((m) => {
     const matchesSearch =
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.email || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'All' || m.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -354,7 +359,7 @@ export default function TeamMembersPage() {
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F3E8DC] text-[#4A3023] border border-[#E8DCD1]">
                           <Building2 className="w-3 h-3 text-[#96613F]" />
-                          {member.department || 'General'}
+                          {member.department || '—'}
                         </span>
                       </td>
 
@@ -379,26 +384,34 @@ export default function TeamMembersPage() {
                         <StatusBadge status={member.status} />
                       </td>
 
-                      <td className="px-4 py-3 text-xs text-[#77716B]">{member.joinedDate}</td>
+                      <td className="px-4 py-3 text-xs text-[#77716B]">
+                        {member.joinedDate ? new Date(member.joinedDate).toLocaleDateString() : '—'}
+                      </td>
 
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(member)}
-                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
-                            title="Edit Folder Access"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMemberToDelete(member)}
-                            className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
-                            title="Remove Member"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {member.role !== 'Admin' && (
+                            <>
+                              {member.status === 'Active' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(member)}
+                                  className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
+                                  title="Edit Folder Access"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setMemberToDelete(member)}
+                                className="p-1.5 rounded-lg text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
+                                title={member.status === 'Invited' ? 'Cancel Invitation' : 'Remove Member'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -410,7 +423,7 @@ export default function TeamMembersPage() {
         </motion.div>
       </motion.div>
 
-      {/* 4. Invite / Edit Member Modal (Department -> Employees -> Folders) */}
+      {/* 4. Invite / Edit Member Modal */}
       {typeof document !== 'undefined' &&
         createPortal(
           <AnimatePresence>
@@ -450,69 +463,42 @@ export default function TeamMembersPage() {
 
                   <form onSubmit={handleSubmitMember} className="mt-4 space-y-4 text-xs">
                     {!editingMember && (
-                      <>
-                        {/* Step 1: Select Department */}
-                        <div>
-                          <label className="block font-semibold text-[#25211E] mb-1">
-                            1. Select Department *
-                          </label>
-                          <select
-                            value={selectedDepartment}
-                            onChange={(e) => setSelectedDepartment(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] font-medium focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
-                          >
-                            {DEPARTMENTS.map((dept) => (
-                              <option key={dept} value={dept}>
-                                {dept}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Step 2: Select Employee from that Department */}
-                        <div>
-                          <label className="block font-semibold text-[#25211E] mb-1">
-                            2. Select Employee ({selectedDepartment}) *
-                          </label>
-                          {departmentEmployees.length === 0 ? (
-                            <div className="p-3 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1] text-[11px] text-[#77716B] text-center">
-                              No employees found in <span className="font-semibold text-[#25211E]">{selectedDepartment}</span> department. Add them first on the Add Member page.
-                            </div>
-                          ) : (
-                            <select
-                              value={selectedEmployeeId}
-                              onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                              className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] font-medium focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
-                            >
-                              {departmentEmployees.map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                  {emp.name} ({emp.employeeId}) — {emp.email}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      </>
+                      <div>
+                        <label className="block font-semibold text-[#25211E] mb-1">
+                          Member email *
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="name@organization.com"
+                          className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-[#25211E] font-medium focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
+                        />
+                        <p className="mt-1.5 text-[11px] text-[#77716B]">
+                          The backend records a pending invitation, but email delivery and the member acceptance screen are not configured yet.
+                        </p>
+                      </div>
                     )}
 
-                    {/* Step 3: Select Accessible Folders */}
-                    <div>
-                      <label className="block font-semibold text-[#25211E] mb-1.5">
-                        {editingMember ? 'Select Accessible Folders:' : '3. Select Accessible Folders:'}
-                      </label>
-                      <div className="bg-[#FAF7F2] p-2.5 rounded-[8px] border border-[#E8DCD1]">
-                        {availableFolders.length === 0 ? (
-                          <p className="text-[11px] text-[#77716B] py-2 text-center">
-                            No folders created yet. Create folders from the Folders page.
-                          </p>
-                        ) : (
+                    {editingMember && (
+                      <div>
+                        <label className="block font-semibold text-[#25211E] mb-1.5">
+                          Select accessible folders:
+                        </label>
+                        <div className="bg-[#FAF7F2] p-2.5 rounded-[8px] border border-[#E8DCD1]">
+                          {serverFolders.length === 0 ? (
+                            <p className="text-[11px] text-[#77716B] py-2 text-center">
+                              No folders created yet. Create folders from the Folders page.
+                            </p>
+                          ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto custom-sidebar-scroll">
-                            {availableFolders.map((folder) => {
-                              const isChecked = selectedFolders.includes(folder);
+                            {serverFolders.map((folder) => {
+                              const isChecked = selectedFolders.includes(folder.name);
                               return (
                                 <label
-                                  key={folder}
-                                  onClick={() => toggleFolderSelection(folder)}
+                                  key={folder.id}
+                                  onClick={() => toggleFolderSelection(folder.name)}
                                   className="flex items-center gap-2 p-1.5 rounded hover:bg-[#FFFFFF] cursor-pointer transition-colors"
                                 >
                                   <div
@@ -524,14 +510,15 @@ export default function TeamMembersPage() {
                                   >
                                     {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                                   </div>
-                                  <span className="font-medium text-[#25211E]">{folder}</span>
+                                  <span className="font-medium text-[#25211E]">{folder.name}</span>
                                 </label>
                               );
                             })}
                           </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="pt-3 border-t border-[#E8DCD1] flex justify-end gap-2">
                       <button
@@ -546,7 +533,7 @@ export default function TeamMembersPage() {
                       </button>
                       <button
                         type="submit"
-                        disabled={!editingMember && departmentEmployees.length === 0}
+                        disabled={inviteMemberMutation.isPending || updateAccessMutation.isPending}
                         className="px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                       >
                         {editingMember ? 'Save Changes' : 'Send Invitation'}
@@ -570,7 +557,7 @@ export default function TeamMembersPage() {
         onCancel={() => setMemberToDelete(null)}
         onConfirm={() => {
           if (memberToDelete) {
-            handleDeleteMember(memberToDelete.id, memberToDelete.name);
+            handleDeleteMember(memberToDelete.id);
             setMemberToDelete(null);
           }
         }}

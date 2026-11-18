@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const mainRef = useRef(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -23,7 +25,9 @@ export default function AdminLayout({ children }) {
   }
 
   const handleLogout = () => {
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
+    queryClient.clear();
     navigate('/login', { replace: true });
   };
 

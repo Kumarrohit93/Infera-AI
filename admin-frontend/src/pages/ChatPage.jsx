@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ragApi } from '../services/api';
 import {
   Plus,
   Send,
@@ -7,9 +9,7 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
-  ChevronDown,
   X,
-  ShieldCheck,
   MessageSquare,
   BookOpen,
   Inbox
@@ -18,72 +18,85 @@ import toast from 'react-hot-toast';
 
 export default function ChatPage() {
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
 
-  // Left Panel: Retrieval Scope
-  const [retrievalScope, setRetrievalScope] = useState('All Folders (Global Index)');
-
-  // Conversations List (ZERO MOCK DATA - Shuruat mein bilkul empty array)
-  const [conversations, setConversations] = useState([]);
+  const {
+    data: conversations = [],
+    isError: conversationsError,
+    error: conversationsQueryError,
+  } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: ragApi.getConversations,
+    initialData: [],
+    retry: false,
+  });
   const [activeConvId, setActiveConvId] = useState(null);
-
-  // Active Chat Messages State (ZERO MOCK DATA)
   const [messages, setMessages] = useState([]);
 
   // Input & Modal States
   const [queryInput, setQueryInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeCitation, setActiveCitation] = useState(null);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
+  useEffect(() => {
+    if (conversationsError) {
+      toast.error(conversationsQueryError?.message || 'Failed to load conversations.');
+    }
+  }, [conversationsError, conversationsQueryError]);
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
 
-  // Handle + New Chat
-  const handleNewChat = () => {
-    const newId = `conv-${Date.now()}`;
-    const newConv = {
-      id: newId,
-      title: 'New Conversation',
-      folder: retrievalScope.includes('HR')
-        ? 'HR'
-        : retrievalScope.includes('IT')
-        ? 'IT'
-        : 'General',
-      time: 'Just now'
-    };
-
-    setConversations((prev) => [newConv, ...prev]);
-    setActiveConvId(newId);
-    setMessages([]);
-    toast.success('Started a new chat session.');
+  const handleNewChat = async () => {
+    try {
+      const conversation = await ragApi.createConversation();
+      setActiveConvId(conversation.id);
+      setMessages([]);
+      setActiveCitation(null);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (err) {
+      toast.error(err?.message || 'Failed to start a new conversation.');
+    }
   };
 
-  // Handle Select Conversation
-  const handleSelectConv = (convId) => {
+  const handleSelectConv = async (convId) => {
+    if (convId === activeConvId || isLoadingMessages || isGenerating) return;
     setActiveConvId(convId);
-    // Jab backend API se connect hoga toh yahan se specific conversation messages fetch honge
+    setMessages([]);
+    setIsLoadingMessages(true);
+    setActiveCitation(null);
+    try {
+      const history = await ragApi.getConversationMessages(convId);
+      setMessages(history.map((message) => ({
+        id: message.id,
+        sender: message.role === 'user' ? 'user' : 'ai',
+        text: message.content,
+        time: message.createdAt
+          ? new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : '',
+        userRating: null,
+        citations: (message.sources || []).map((source) => ({
+          id: source.sourceId,
+          title: source.documentName,
+          score: source.similarity == null ? '' : `${Math.round(source.similarity * 100)}%`,
+          excerpt: `Section: ${source.heading || 'General'} | Page: ${source.pageNumber || 'N/A'}`,
+        })),
+      })));
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load conversation messages.');
+    } finally {
+      setIsLoadingMessages(false);
+    }
   };
 
   // Handle Send Question
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     if (e) e.preventDefault();
     const query = queryInput.trim();
     if (!query || isGenerating) return;
-
-    // Agar koi conversation active nahi hai toh pehle nayi conversation bana lo
-    let currentId = activeConvId;
-    if (!currentId) {
-      currentId = `conv-${Date.now()}`;
-      const newConv = {
-        id: currentId,
-        title: query.length > 32 ? `${query.slice(0, 32)}...` : query,
-        folder: retrievalScope.split(' ')[0] || 'General',
-        time: 'Just now'
-      };
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveConvId(currentId);
-    }
 
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -96,33 +109,41 @@ export default function ChatPage() {
     setQueryInput('');
     setIsGenerating(true);
 
-    // Baad mein yeh setTimeout sidha aapke backend API (e.g. POST /api/chat) se replace hoga
-    setTimeout(() => {
+    try {
+      const result = await ragApi.askQuestion({ question: query, conversationId: activeConvId || undefined });
+      setActiveConvId(result.conversationId);
       const aiResponse = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: `Based on your indexed organization documents in ${retrievalScope}:\n\nHere is the verified guidance for: "${query}". Documented procedures specify that team members must follow standard approval policies.`,
+        text: result.answer,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         userRating: null,
-        citations: []
+        citations: Array.isArray(result.sources)
+          ? result.sources.map((s) => ({
+              id: s.sourceId,
+              title: s.documentName,
+              score: `${Math.round((s.similarity || 0.8) * 100)}%`,
+              excerpt: `Section: ${s.heading || 'General'} | Page: ${s.pageNumber || 'N/A'}`
+            }))
+          : []
       };
-
       setMessages((prev) => [...prev, aiResponse]);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (err) {
+      console.error('RAG Error:', err);
+      toast.error(err?.message || 'Failed to query RAG assistant');
+    } finally {
       setIsGenerating(false);
-    }, 1000);
+    }
   };
 
-  // Feedback Handler
-  const handleRating = (messageId, rating) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, userRating: rating } : m))
-    );
-    toast.success(`Feedback recorded: ${rating}`);
+  const handleRating = () => {
+    toast.error('Response ratings are not yet supported by the RAG backend.');
   };
 
   return (
     <div className="h-[calc(100dvh-6.2rem)] sm:h-[calc(100vh-6.5rem)] flex flex-col lg:flex-row bg-[#FFFFFF] border border-[#E8DCD1] rounded-[16px] sm:rounded-[20px] shadow-sm overflow-hidden relative">
-      {/* ================= LEFT SIDEBAR PANEL: CONVERSATION LIST & SCOPE ================= */}
+      {/* ================= LEFT SIDEBAR PANEL: CONVERSATION LIST ================= */}
       <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E8DCD1] bg-[#FAF7F2]/60 flex flex-col shrink-0">
         {/* + New Chat Button */}
         <div className="p-4 border-b border-[#E8DCD1]">
@@ -135,27 +156,9 @@ export default function ChatPage() {
             <span>New Chat</span>
           </button>
 
-          {/* Knowledge Retrieval Scope Selector */}
-          <div className="mt-3.5">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#77716B] mb-1.5">
-              Knowledge Retrieval Scope
-            </label>
-            <div className="relative">
-              <select
-                value={retrievalScope}
-                onChange={(e) => setRetrievalScope(e.target.value)}
-                className="w-full appearance-none pl-3 pr-8 py-2 bg-white border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] transition-colors cursor-pointer"
-              >
-                <option value="All Folders (Global Index)">All Folders (Global Index)</option>
-                <option value="HR Folder Only">HR Folder Only</option>
-                <option value="IT Folder Only">IT Folder Only</option>
-                <option value="Finance Folder Only">Finance Folder Only</option>
-                <option value="Operations Folder Only">Operations Folder Only</option>
-                <option value="General Folder Only">General Folder Only</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#77716B] absolute right-2.5 top-2.5 pointer-events-none" />
-            </div>
-          </div>
+          <p className="mt-3.5 text-[11px] leading-relaxed text-[#77716B]">
+            Answers use the documents your administrator account is permitted to access.
+          </p>
         </div>
 
         {/* Recent Conversations List / Clean Empty State */}
@@ -204,10 +207,12 @@ export default function ChatPage() {
                       </p>
                     </div>
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FAF7F2] text-[#96613F] border border-[#E8DCD1] shrink-0">
-                      {conv.folder}
+                      {conv.messageCount || 0} messages
                     </span>
                   </div>
-                  <p className="text-[10px] text-[#77716B] mt-1.5 pl-6">{conv.time}</p>
+                  <p className="text-[10px] text-[#77716B] mt-1.5 pl-6">
+                    {conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : ''}
+                  </p>
                 </button>
               );
             })
@@ -225,18 +230,19 @@ export default function ChatPage() {
                 ? conversations.find((c) => c.id === activeConvId)?.title || 'Active Session'
                 : 'Test AI'}
             </h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#F3E8DC] text-[#4A3023] border border-[#E8DCD1] shrink-0">
-              Scope: {retrievalScope.split(' ')[0]}
-            </span>
           </div>
           <span className="hidden sm:inline text-[11px] text-[#77716B] shrink-0">
-            Strict Citation Mode • Zero Mock Data
+            Role-based document access
           </span>
         </div>
 
         {/* Messages Stream / Clean Empty State */}
         <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-4 sm:p-6 space-y-6 bg-[#FAF7F2]/30">
-          {messages.length === 0 ? (
+          {isLoadingMessages ? (
+            <div className="h-full flex items-center justify-center text-xs text-[#77716B]">
+              Loading conversation…
+            </div>
+          ) : messages.length === 0 ? (
             /* Clean Center Welcome Banner (Zero fake messages) */
             <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-10">
               <div className="w-14 h-14 rounded-2xl bg-[#F3E8DC] border border-[#E8DCD1] flex items-center justify-center text-[#96613F] shadow-sm mb-4">

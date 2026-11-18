@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
@@ -17,8 +17,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-// Auth service (Infera-Backend). Override with VITE_AUTH_URL in admin-frontend/.env
-const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:3000/api';
+// Auth service (Infera-Backend on port 9000). Override with VITE_AUTH_URL in admin-frontend/.env
+const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -29,7 +29,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSsoLoading, setIsSsoLoading] = useState(false);
 
   // Forgot Password Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -74,7 +73,7 @@ export default function LoginPage() {
       localStorage.setItem('isAdminAuth', 'true');
       toast.success('Admin login successful!');
       navigate('/dashboard');
-    } catch (error) {
+    } catch {
       toast.error('Cannot reach the server. Please try again.');
     } finally {
       setIsLoading(false);
@@ -95,8 +94,7 @@ export default function LoginPage() {
       toast.error('Please enter your work email address.');
       return;
     }
-    setResetSent(true);
-    toast.success('Password reset link has been dispatched.');
+    toast.error('Password reset is not available because the backend has no reset endpoint yet.');
   };
 
   // 4 Feature highlight cards data
@@ -364,18 +362,11 @@ export default function LoginPage() {
           <motion.button
             whileTap={{ scale: 0.98 }}
             type="button"
-            disabled={isSsoLoading}
             onClick={handleGoogleSSO}
             className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-[#E8DCD1] bg-white hover:bg-[#FAF7F2] transition-colors text-xs font-semibold text-[#25211E] cursor-pointer"
           >
-            {isSsoLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-[#96613F]" />
-                <span>Connecting...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <>
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -392,10 +383,9 @@ export default function LoginPage() {
                     fill="#EA4335"
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
-                </svg>
-                <span>Continue with Google Workspace</span>
-              </>
-            )}
+              </svg>
+              <span>Continue with Google Workspace</span>
+            </>
           </motion.button>
         </motion.div>
       </div>
