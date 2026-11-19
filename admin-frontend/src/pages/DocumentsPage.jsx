@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,66 +46,58 @@ export default function DocumentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const fileInputRef = useRef(null);
+  const versionInputRef = useRef(null);
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState(
-    () => searchParams.get('folder') || 'All'
-  );
+  const selectedFolderFilter = searchParams.get('folder') || 'All';
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
 
-  // Sync folder filter when navigated from FoldersPage (?folder=...)
-  useEffect(() => {
-    const folderParam = searchParams.get('folder');
-    if (folderParam) {
-      setSelectedFolderFilter(folderParam);
-    }
-  }, [searchParams]);
-
   // TanStack Query: Fetch Folders dynamically (Synchronised with FoldersPage, Zero Mock Data)
-  const { data: folders = [] } = useQuery({
+  const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
     queryKey: ['folders'],
-    queryFn: async () => {
-      const res = await folderApi.getFolders();
-      return Array.isArray(res) ? res : [];
-    },
+    queryFn: folderApi.getFolders,
+    initialData: [],
     refetchOnWindowFocus: false,
     retry: false,
   });
 
-  // Sync targetUploadFolder with available folders
   useEffect(() => {
-    if (folders.length > 0) {
-      const stillExists = folders.some((f) => f.name === targetUploadFolder);
-      if (!targetUploadFolder || !stillExists) {
-        setTargetUploadFolder(folders[0].name);
-      }
-    } else {
-      setTargetUploadFolder('');
-    }
-  }, [folders, targetUploadFolder]);
+    if (foldersError) toast.error(foldersQueryError?.message || 'Failed to load folders.');
+  }, [foldersError, foldersQueryError]);
+
+  const effectiveUploadFolder = folders.some((folder) => folder.name === targetUploadFolder)
+    ? targetUploadFolder
+    : folders[0]?.name || '';
 
   // TanStack Query: Fetch Documents (Strictly Zero Mock Data)
-  const { data: serverDocs = [], isLoading, isFetching } = useQuery({
+  const { data: serverDocs = [], isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['documents', selectedFolderFilter],
-    queryFn: async () => {
-      const res = await documentApi.getDocuments(selectedFolderFilter);
-      return Array.isArray(res) ? res : [];
+    queryFn: () => {
+      const selectedFolder = folders.find((folder) => folder.name === selectedFolderFilter);
+      return documentApi.getDocuments(
+        selectedFolderFilter === 'All' ? 'All' : selectedFolder?.id || selectedFolderFilter
+      );
     },
     refetchOnWindowFocus: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((document) =>
+        ['queued', 'processing'].includes(
+          (document.processingStatus || document.status).toLowerCase()
+        )
+      )
+        ? 2000
+        : false,
     retry: false,
   });
 
-  // Local state synced with server data + uploaded items
-  const [documents, setDocuments] = useState([]);
-
   useEffect(() => {
-    if (serverDocs) {
-      setDocuments(serverDocs);
-    }
-  }, [serverDocs]);
+    if (isError) toast.error(error?.message || 'Failed to load documents.');
+  }, [isError, error]);
+
+  const documents = serverDocs;
 
   // Drag over visual state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -114,10 +106,56 @@ export default function DocumentsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadingName, setCurrentUploadingName] = useState('');
+  const [recentlyUploadedIds, setRecentlyUploadedIds] = useState(() => new Set());
+  const uploadStatusTimersRef = useRef(new Map());
+
+  useEffect(() => () => {
+    uploadStatusTimersRef.current.forEach((timer) => clearTimeout(timer));
+  }, []);
+
+  const showTemporaryProcessingStatus = (documentIds) => {
+    if (documentIds.length === 0) return;
+
+    setRecentlyUploadedIds((current) => new Set([...current, ...documentIds]));
+    documentIds.forEach((documentId) => {
+      const previousTimer = uploadStatusTimersRef.current.get(documentId);
+      if (previousTimer) clearTimeout(previousTimer);
+
+      const timer = setTimeout(() => {
+        setRecentlyUploadedIds((current) => {
+          const next = new Set(current);
+          next.delete(documentId);
+          return next;
+        });
+        uploadStatusTimersRef.current.delete(documentId);
+      }, 3000);
+
+      uploadStatusTimersRef.current.set(documentId, timer);
+    });
+  };
 
   // Inspect & Delete Modal state
   const [inspectingDoc, setInspectingDoc] = useState(null);
+  const [versioningDoc, setVersioningDoc] = useState(null);
   const [docToDelete, setDocToDelete] = useState(null);
+  const {
+    data: documentVersions = [],
+    isError: versionsError,
+    error: versionsQueryError,
+  } = useQuery({
+    queryKey: ['document-versions', inspectingDoc?.id],
+    queryFn: () => documentApi.getVersions(inspectingDoc.id),
+    enabled: Boolean(inspectingDoc?.id),
+    refetchInterval: (query) =>
+      query.state.data?.some((version) =>
+        ['queued', 'processing'].includes(version.status)
+      ) ? 2000 : false,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (versionsError) toast.error(versionsQueryError?.message || 'Failed to load document versions.');
+  }, [versionsError, versionsQueryError]);
 
   // TanStack Mutation: Delete Document
   const deleteDocMutation = useMutation({
@@ -125,79 +163,99 @@ export default function DocumentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      toast.success('Document removed from the knowledge base.');
     },
     onError: (err) => {
       toast.error(err?.message || 'Failed to delete document.');
     }
   });
 
-  // File Upload with simulated RAG pipeline progress & FoldersPage docCount sync
-  const processFiles = (filesList) => {
+  // Real Backend File Upload with progress animation
+  const processFiles = async (filesList) => {
     const files = Array.from(filesList || []);
     if (files.length === 0) return;
 
-    if (!targetUploadFolder) {
+    if (!effectiveUploadFolder) {
       toast.error('Please create a folder in Folders page first before uploading.');
       return;
     }
 
-    const chosenFolder = targetUploadFolder;
+    const matchedFolder = folders.find(
+      (f) => f.name === effectiveUploadFolder || f.id === effectiveUploadFolder
+    );
+    const folderId = matchedFolder?.id;
+
+    if (!folderId) {
+      toast.error('Please select a valid folder.');
+      return;
+    }
+
     const firstFile = files[0];
     setCurrentUploadingName(files.length === 1 ? firstFile.name : `${files.length} documents`);
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(25);
 
-    // Simulate chunking and vector embedding pipeline
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return prev + 25;
-      });
-    }, 250);
+    const progressTimer = setInterval(() => {
+      setUploadProgress((prev) => (prev < 85 ? prev + 15 : prev));
+    }, 300);
 
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(100);
-
-      const newDocs = files.map((file, idx) => ({
-        id: Date.now() + idx,
-        name: file.name,
-        extension: file.name.split('.').pop().toUpperCase(),
-        folder: chosenFolder,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadDate: new Date().toISOString().split('T')[0],
-        status: 'Completed',
-        pages: Math.floor(Math.random() * 40) + 12,
-        chunks: Math.floor(Math.random() * 150) + 35
-      }));
-
-      setDocuments((prev) => [...newDocs, ...prev]);
-      queryClient.setQueryData(['documents', selectedFolderFilter], (prev = []) => [...newDocs, ...prev]);
-      if (selectedFolderFilter !== 'All') {
-        queryClient.setQueryData(['documents', 'All'], (prev = []) => [...newDocs, ...prev]);
+    try {
+      const uploadedDocumentIds = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folderId', folderId);
+        const result = await documentApi.uploadDocument(formData);
+        const uploadedDocument = result?.document || result;
+        if (uploadedDocument?.id) uploadedDocumentIds.push(uploadedDocument.id);
       }
 
-      // Sync folder docCount in FoldersPage cache
-      queryClient.setQueryData(['folders'], (prev = []) =>
-        prev.map((f) =>
-          f.name === chosenFolder
-            ? { ...f, docCount: (f.docCount || 0) + newDocs.length }
-            : f
-        )
-      );
+      clearInterval(progressTimer);
+      setUploadProgress(100);
 
-      setIsUploading(false);
-      setUploadProgress(0);
-      toast.success(`${files.length} document(s) uploaded to "${chosenFolder}"!`);
-    }, 1200);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['documents'] }),
+        queryClient.invalidateQueries({ queryKey: ['folders'] }),
+      ]);
+      showTemporaryProcessingStatus(uploadedDocumentIds);
+
+      toast.success(`${files.length} document(s) uploaded! Indexing in progress.`);
+    } catch (err) {
+      clearInterval(progressTimer);
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 600);
+    }
   };
 
   const handleFileSelect = (e) => {
     processFiles(e.target.files);
     e.target.value = '';
+  };
+
+  const handleVersionFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !versioningDoc) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      await documentApi.uploadVersion(versioningDoc.id, formData);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['documents'] }),
+        queryClient.invalidateQueries({ queryKey: ['document-versions', versioningDoc.id] }),
+      ]);
+      showTemporaryProcessingStatus([versioningDoc.id]);
+      toast.success('New version uploaded. It will become current after indexing.');
+    } catch (uploadError) {
+      toast.error(uploadError?.message || 'Could not upload this document version.');
+    } finally {
+      setVersioningDoc(null);
+    }
   };
 
   // Drag and Drop Handlers
@@ -221,26 +279,6 @@ export default function DocumentsPage() {
   // Delete Document Handler
   const handleDelete = (doc) => {
     deleteDocMutation.mutate(doc.id);
-    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-    queryClient.setQueryData(['documents', selectedFolderFilter], (prev = []) =>
-      prev.filter((d) => d.id !== doc.id)
-    );
-    if (selectedFolderFilter !== 'All') {
-      queryClient.setQueryData(['documents', 'All'], (prev = []) =>
-        prev.filter((d) => d.id !== doc.id)
-      );
-    }
-
-    // Sync folder docCount decrement in FoldersPage cache
-    queryClient.setQueryData(['folders'], (prev = []) =>
-      prev.map((f) =>
-        f.name === doc.folder
-          ? { ...f, docCount: Math.max(0, (f.docCount || 0) - 1) }
-          : f
-      )
-    );
-
-    toast.error(`"${doc.name}" removed from knowledge base.`);
   };
 
   // Format Badge Color Helper
@@ -313,6 +351,13 @@ export default function DocumentsPage() {
             onChange={handleFileSelect}
             className="hidden"
           />
+          <input
+            ref={versionInputRef}
+            type="file"
+            accept=".pdf,.docx,.txt"
+            onChange={handleVersionFileSelect}
+            className="hidden"
+          />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start sm:items-center gap-4">
@@ -335,7 +380,7 @@ export default function DocumentsPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-[#77716B] shrink-0">Target Folder:</span>
                 <select
-                  value={targetUploadFolder}
+                  value={effectiveUploadFolder}
                   onChange={(e) => setTargetUploadFolder(e.target.value)}
                   disabled={folders.length === 0}
                   className="w-full sm:w-auto px-3.5 py-2 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:outline-none focus:border-[#96613F] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
@@ -415,10 +460,10 @@ export default function DocumentsPage() {
               value={selectedFolderFilter}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedFolderFilter(val);
                 if (val === 'All') {
-                  searchParams.delete('folder');
-                  setSearchParams(searchParams, { replace: true });
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.delete('folder');
+                  setSearchParams(nextParams, { replace: true });
                 } else {
                   setSearchParams({ folder: val }, { replace: true });
                 }
@@ -439,6 +484,7 @@ export default function DocumentsPage() {
               className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-medium text-[#25211E] focus:outline-none focus:border-[#96613F]"
             >
               <option value="All">All Statuses</option>
+              <option value="Queued">Queued</option>
               <option value="Completed">Completed</option>
               <option value="Processing">Processing</option>
               <option value="Pending">Pending</option>
@@ -499,8 +545,9 @@ export default function DocumentsPage() {
                               </span>
                             </div>
                             <p className="text-[11px] text-[#77716B] mt-0.5">
-                              {doc.pages ? `${doc.pages} pages • ` : ''}
-                              {doc.chunks ? `${doc.chunks} vector chunks` : 'Vectorizing'}
+                              {doc.pages ? `${doc.pages} pages` : doc.mimeType || ''}
+                              {doc.chunks ? ` • ${doc.chunks} vector chunks` : ''}
+                              {doc.errorMessage ? ` • ${doc.errorMessage}` : ''}
                             </p>
                           </div>
                         </div>
@@ -513,7 +560,9 @@ export default function DocumentsPage() {
                       <td className="px-4 py-3 text-xs text-[#77716B]">{doc.size}</td>
                       <td className="px-4 py-3 text-xs text-[#77716B]">{doc.uploadDate}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={doc.status} />
+                        <StatusBadge
+                          status={recentlyUploadedIds.has(doc.id) ? 'Processing' : doc.uploadStatus}
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1.5">
@@ -614,7 +663,7 @@ export default function DocumentsPage() {
                           Which folder do you want to upload documents into?
                         </label>
                         <select
-                          value={targetUploadFolder}
+                          value={effectiveUploadFolder}
                           onChange={(e) => setTargetUploadFolder(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[8px] text-xs font-semibold text-[#25211E] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#96613F] transition-colors"
                         >
@@ -713,8 +762,40 @@ export default function DocumentsPage() {
                     <div>
                       <p className="font-bold text-[#25211E] mb-1">Indexing Pipeline Details:</p>
                       <p className="text-[#77716B] leading-relaxed">
-                        Chunk Size: 800 tokens • Overlap: 120 tokens • Model: text-embedding-3-large • Dimensions: 3,072
+                        Chunk Size: 800 tokens • Overlap: 120 tokens • Model: gemini-embedding-001 • Dimensions: 1,536
                       </p>
+                    </div>
+                    <div className="border-t border-[#E8DCD1] pt-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-bold text-[#25211E]">Version history</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVersioningDoc(inspectingDoc);
+                            versionInputRef.current?.click();
+                          }}
+                          className="rounded-lg bg-[#96613F] px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-[#4A3023]"
+                        >
+                          Upload new version
+                        </button>
+                      </div>
+                      <ul className="mt-2 max-h-32 space-y-2 overflow-y-auto">
+                        {documentVersions.map((version) => (
+                          <li
+                            key={version.id}
+                            className="flex items-center justify-between gap-3 rounded-lg bg-[#FAF7F2] px-3 py-2"
+                          >
+                            <span className="min-w-0 truncate">
+                              v{version.versionNumber} · {version.originalFilename}
+                              {version.isCurrent ? ' · Current' : ''}
+                            </span>
+                            <span className="shrink-0 capitalize text-[#77716B]">{version.status}</span>
+                          </li>
+                        ))}
+                        {documentVersions.length === 0 && (
+                          <li className="text-[#77716B]">No versions found.</li>
+                        )}
+                      </ul>
                     </div>
                   </div>
 

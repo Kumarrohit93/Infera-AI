@@ -17,6 +17,26 @@ async function uploadDocument(req, res) {
   res.status(202).json({ success: true, data: { document } });
 }
 
+async function uploadDocumentVersion(req, res) {
+  const { id } = parseOrThrow(documentIdParamSchema, req.params);
+  const version = await documentService.uploadDocumentVersion({
+    organizationId: req.user.organizationId,
+    userId: req.user.userId,
+    documentId: id,
+    file: req.file,
+  });
+  res.status(202).json({ success: true, data: { version } });
+}
+
+async function listDocumentVersions(req, res) {
+  const { id } = parseOrThrow(documentIdParamSchema, req.params);
+  const versions = await documentService.listDocumentVersions({
+    organizationId: req.user.organizationId,
+    documentId: id,
+  });
+  res.status(200).json({ success: true, data: versions });
+}
+
 async function listDocuments(req, res) {
   const folderId = req.query.folderId;
   const documents = await documentService.listDocuments({
@@ -37,4 +57,10 @@ async function deleteDocument(req, res) {
   res.status(204).send();
 }
 
-module.exports = { uploadDocument, listDocuments, deleteDocument };
+module.exports = {
+  uploadDocument,
+  uploadDocumentVersion,
+  listDocumentVersions,
+  listDocuments,
+  deleteDocument,
+};

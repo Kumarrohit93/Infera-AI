@@ -4,7 +4,7 @@
 const pool = require("../Config/db.js");
 
 const EMBEDDING_DIMENSION = Number(
-    process.env.EMBEDDING_DIMENSION || 3072
+    process.env.EMBEDDING_DIMENSION || 1536
 );
 
 const EMBEDDING_MODEL = "gemini-embedding-001";
@@ -14,6 +14,7 @@ const saveDocumentChunks = async ({
     documentId,
     organizationId,
     chunks,
+    versionId,
 }) => {
     if (!documentId || !organizationId) {
         throw new Error("Document ID and Organization ID are required");
@@ -55,6 +56,36 @@ const saveDocumentChunks = async ({
 
         if (documentResult.rowCount === 0) {
             throw new Error("Document not found in this organization");
+        }
+
+        let version = null;
+        if (versionId) {
+            const versionResult = await client.query(
+                `SELECT id, version_number, original_filename, storage_key, mime_type,
+                        file_size_bytes, checksum_sha256, created_at
+                 FROM document_versions
+                 WHERE id = $1 AND document_id = $2 AND organization_id = $3
+                 FOR UPDATE`,
+                [versionId, documentId, organizationId]
+            );
+            if (versionResult.rowCount === 0) {
+                throw new Error("Document version not found");
+            }
+            version = versionResult.rows[0];
+            const latestVersion = await client.query(
+                `SELECT MAX(version_number)::int AS version_number
+                 FROM document_versions
+                 WHERE document_id = $1 AND organization_id = $2`,
+                [documentId, organizationId]
+            );
+            if (version.version_number < latestVersion.rows[0].version_number) {
+                await client.query(
+                    "UPDATE document_versions SET status = 'superseded' WHERE id = $1",
+                    [versionId]
+                );
+                await client.query("COMMIT");
+                return { documentId, savedChunks: 0, superseded: true };
+            }
         }
 
         // Remove old chunks so reprocessing does not create duplicates.
@@ -101,15 +132,52 @@ const saveDocumentChunks = async ({
             );
         }
 
-        // Mark the document ready only after all chunks are saved.
-        await client.query(
-            `UPDATE documents
-       SET status = 'ready',
-           processing_error = NULL,
-           updated_at = NOW()
-       WHERE id = $1 AND organization_id = $2`,
-            [documentId, organizationId]
-        );
+        if (versionId) {
+            await client.query(
+                `UPDATE document_versions
+                 SET is_current = FALSE
+                 WHERE document_id = $1 AND organization_id = $2 AND is_current`,
+                [documentId, organizationId]
+            );
+            await client.query(
+                `UPDATE document_versions
+                 SET status = 'ready', is_current = TRUE
+                 WHERE id = $1`,
+                [versionId]
+            );
+            await client.query(
+                `UPDATE documents
+                 SET original_filename = $3,
+                     storage_key = $4,
+                     mime_type = $5,
+                     file_size_bytes = $6,
+                     checksum_sha256 = $7,
+                     uploaded_at = $8,
+                     status = 'ready',
+                     processing_error = NULL,
+                     updated_at = NOW()
+                 WHERE id = $1 AND organization_id = $2`,
+                [
+                    documentId,
+                    organizationId,
+                    version.original_filename,
+                    version.storage_key,
+                    version.mime_type,
+                    version.file_size_bytes,
+                    version.checksum_sha256,
+                    version.created_at,
+                ]
+            );
+        } else {
+            await client.query(
+                `UPDATE documents
+                 SET status = 'ready',
+                     processing_error = NULL,
+                     updated_at = NOW()
+                 WHERE id = $1 AND organization_id = $2`,
+                [documentId, organizationId]
+            );
+        }
 
         await client.query("COMMIT");
 

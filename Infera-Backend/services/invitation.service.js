@@ -2,8 +2,9 @@ const crypto = require("crypto")
 const bcrypt = require("bcryptjs")
 const { pool } = require("../config/db")
 const AppError = require("../utils/AppError")
-const { signAccessToken } = require("../utils/token")
 const { frontendUrl, invitationExpiresDays } = require("../config/env")
+const { sendEmail } = require("./email.service")
+const { createSession } = require("./session.service")
 
 const BCRYPT_ROUNDS = 12
 
@@ -40,8 +41,17 @@ async function createInvitation({ organizationId, invitedBy, email, role }) {
   )
   const row = result.rows[0]
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[DEV] Invitation link for ${emailLower}: ${frontendUrl}/accept-invitation?token=${token}`)
+  const invitationUrl = `${frontendUrl.replace(/\/$/, "")}/accept-invitation?token=${token}`
+  try {
+    const sent = await sendEmail({
+      to: emailLower,
+      subject: "You are invited to Infera AI",
+      html: `<p>You have been invited to join an organization on Infera AI.</p><p><a href="${invitationUrl}">Accept invitation</a></p><p>This link expires in ${invitationExpiresDays} days.</p>`,
+    })
+    if (!sent) console.log(`[DEV] Invitation link for ${emailLower}: ${invitationUrl}`)
+  } catch (error) {
+    await pool.query("DELETE FROM invitations WHERE id = $1", [row.id])
+    throw new AppError(503, "EMAIL_DELIVERY_FAILED", error.message)
   }
 
   return {
@@ -90,22 +100,13 @@ async function acceptInvitation({ token, name, password }) {
 
     await client.query("COMMIT")
 
-    const accessToken = signAccessToken({
-      userId: user.id,
-      organizationId: invitation.organization_id,
+    return createSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
       role: invitation.role,
+      organizationId: invitation.organization_id,
     })
-
-    return {
-      accessToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: invitation.role,
-        organizationId: invitation.organization_id,
-      },
-    }
   } catch (err) {
     await client.query("ROLLBACK")
     if (err.code === "23505") {

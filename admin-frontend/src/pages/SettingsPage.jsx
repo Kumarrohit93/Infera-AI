@@ -1,6 +1,7 @@
-import React, { useState, useRef, useId } from 'react';
+import { useState, useRef, useId } from 'react';
 import { motion } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authApi } from '../services/api';
 import {
   Building2,
   Cpu,
@@ -10,7 +11,6 @@ import {
   Upload,
   Save,
   LogOut,
-  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +30,7 @@ const DEFAULT_AI = {
   temperature: 0.2,
   topK: 4,
   chunkSize: 800,
-  embeddingModel: 'text-embedding-3-large',
+  embeddingModel: 'gemini-embedding-001',
   strictGrounding: true
 };
 
@@ -109,6 +109,11 @@ export default function SettingsPage() {
   const logoInputRef = useRef(null);
   const logoGradId = useId();
   const [activeTab, setActiveTab] = useState('organization');
+  const { data: account } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: authApi.getCurrentUser,
+    retry: false,
+  });
 
   const [savedInitial] = useState(() => loadSavedSettings());
 
@@ -131,7 +136,7 @@ export default function SettingsPage() {
   }));
 
   // Tab 4: Integrations State
-  const [integrations, setIntegrations] = useState(() =>
+  const [integrations] = useState(() =>
     Array.isArray(savedInitial?.integrations)
       ? savedInitial.integrations
       : DEFAULT_INTEGRATIONS
@@ -140,9 +145,7 @@ export default function SettingsPage() {
   // Tab 5: General / Admin Profile State
   const [profileData, setProfileData] = useState(() => ({
     ...DEFAULT_PROFILE,
-    ...(savedInitial?.profileData || {}),
-    currentPassword: '',
-    newPassword: ''
+    ...(savedInitial?.profileData || {})
   }));
 
   const persistSettings = (overrides = {}) => {
@@ -166,21 +169,9 @@ export default function SettingsPage() {
     }
   };
 
-  // TanStack Mutation for saving settings
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (message) => {
-      // Persist locally until PATCH /api/organizations/current is connected
-      persistSettings();
-      return message;
-    },
-    onSuccess: (message) => {
-      queryClient.invalidateQueries({ queryKey: ['organization'] });
-      toast.success(message);
-    }
-  });
-
-  const handleSave = (message) => {
-    saveSettingsMutation.mutate(message);
+  const handleSave = () => {
+    persistSettings();
+    toast.error('Settings changes are not saved: the backend does not expose a settings endpoint yet.');
   };
 
   const handleLogoUpload = (e) => {
@@ -206,34 +197,16 @@ export default function SettingsPage() {
     e.target.value = '';
   };
 
-  const handleIntegrationAction = (item) => {
-    if (item.actionText === 'Configure') {
-      toast.success(`${item.name} is connected and active.`);
-      return;
-    }
-
-    const willConnect = item.status !== 'Connected';
-    const updatedList = integrations.map((intItem) =>
-      intItem.id === item.id
-        ? {
-            ...intItem,
-            status: willConnect ? 'Connected' : 'Available',
-            actionText: willConnect ? 'Disconnect' : 'Connect',
-            actionStyle: willConnect
-              ? 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
-              : 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-          }
-        : intItem
-    );
-
-    setIntegrations(updatedList);
-    persistSettings({ integrations: updatedList });
-    toast.success(`${item.name} ${willConnect ? 'connected' : 'disconnected'}.`);
-  };
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((error) => console.error('Could not revoke the server session:', error));
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('infera_admin_query_cache_v1');
+    queryClient.clear();
     toast.success('Logged out successfully.');
     navigate('/login', { replace: true });
   };
@@ -247,6 +220,9 @@ export default function SettingsPage() {
         </h2>
         <p className="text-xs sm:text-sm text-[#77716B] mt-1">
           Manage organization branding, AI retrieval hyperparameters, permissions, and account security.
+        </p>
+        <p className="mt-3 rounded-lg border border-[#E8DCD1] bg-white px-3 py-2 text-xs text-[#77716B]">
+          Organization profile details are loaded from the auth backend. Settings, password changes, and external integrations are not writable because these backend endpoints are not implemented yet.
         </p>
       </div>
 
@@ -299,7 +275,7 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    value={orgData.name}
+                    value={orgData.name || account?.organization?.name || ''}
                     onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                   />
@@ -391,15 +367,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Organization settings saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Organization Settings</span>
                 </button>
               </div>
@@ -514,9 +485,9 @@ export default function SettingsPage() {
                     Embedding Model
                   </p>
                   <p className="text-xs font-bold text-[#25211E] mt-2">
-                    text-embedding-3-large
+                    gemini-embedding-001
                   </p>
-                  <p className="text-[11px] text-[#77716B] mt-0.5">3,072 dimensions • Active</p>
+                  <p className="text-[11px] text-[#77716B] mt-0.5">1,536 dimensions • Active</p>
                 </div>
               </div>
 
@@ -540,15 +511,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('AI & Model parameters saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save AI Configuration</span>
                 </button>
               </div>
@@ -657,15 +623,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Access control policies saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Permissions</span>
                 </button>
               </div>
@@ -681,7 +642,7 @@ export default function SettingsPage() {
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-6"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Connected Enterprise Integrations</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">External Integrations</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Sync external cloud repositories and pipe AI retrieval tools to messaging tools.
                 </p>
@@ -722,8 +683,8 @@ export default function SettingsPage() {
                       <div className="flex justify-end pt-3 border-t border-[#E8DCD1]">
                         <button
                           type="button"
-                          onClick={() => handleIntegrationAction(item)}
-                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
+                          disabled
+                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border opacity-60 cursor-not-allowed ${item.actionStyle}`}
                         >
                           {item.actionText}
                         </button>
@@ -755,7 +716,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Full Name</label>
                     <input
                       type="text"
-                      value={profileData.name}
+                      value={profileData.name || account?.user?.name || ''}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -765,7 +726,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Email</label>
                     <input
                       type="email"
-                      value={profileData.email}
+                      value={profileData.email || account?.user?.email || ''}
                       onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -776,7 +737,7 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       disabled
-                      value={profileData.role}
+                      value={profileData.role || (account?.role === 'admin' ? 'Workspace Admin' : account?.role || '')}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2]/60 border border-[#E8DCD1] rounded-[10px] text-[#77716B] font-medium cursor-not-allowed"
                     />
                   </div>
@@ -785,7 +746,7 @@ export default function SettingsPage() {
                 <div className="flex justify-end mt-4">
                   <button
                     type="button"
-                    onClick={() => handleSave('Admin profile updated.')}
+                    onClick={handleSave}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -830,8 +791,7 @@ export default function SettingsPage() {
                         toast.error('Please enter both current and new passwords.');
                         return;
                       }
-                      handleSave('Administrator password updated successfully.');
-                      setProfileData({ ...profileData, currentPassword: '', newPassword: '' });
+                      handleSave();
                     }}
                     className="px-4 py-2 rounded-[8px] bg-white hover:bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-all duration-150 active:scale-95 cursor-pointer"
                   >

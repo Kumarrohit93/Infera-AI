@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   CheckCircle2,
   RefreshCw,
@@ -27,6 +26,12 @@ export default function StatusBadge({ status, size = 'sm', animate = true }) {
       spin: true
     },
     pending: {
+      bg: 'bg-[#FBF5E8] text-[#9A6B26] border-[#EBDDCA]',
+      dot: 'bg-[#9A6B26]',
+      icon: Clock,
+      spin: false
+    },
+    queued: {
       bg: 'bg-[#FBF5E8] text-[#9A6B26] border-[#EBDDCA]',
       dot: 'bg-[#9A6B26]',
       icon: Clock,

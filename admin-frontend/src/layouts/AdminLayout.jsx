@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const mainRef = useRef(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -22,8 +24,14 @@ export default function AdminLayout({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((error) => console.error('Could not revoke the server session:', error));
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
+    queryClient.clear();
     navigate('/login', { replace: true });
   };
 

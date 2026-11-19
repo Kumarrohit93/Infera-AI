@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -12,15 +11,7 @@ import TeamMembersPage from './pages/TeamMembersPage';
 import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
 import ChatPage from './pages/ChatPage';
-
-// Old mock-era cache key. Backend is connected now, so we no longer persist
-// query data in localStorage; remove any leftover copy.
-const OLD_CACHE_STORAGE_KEY = 'infera_admin_query_cache_v1';
-try {
-  localStorage.removeItem(OLD_CACHE_STORAGE_KEY);
-} catch {
-  // Ignore storage access errors
-}
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // TanStack Query Client Configuration
 const queryClient = new QueryClient({
@@ -34,7 +25,7 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children }) {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   if (!isAuth) {
     return <Navigate to="/login" replace />;
   }
@@ -42,7 +33,7 @@ function ProtectedRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   if (isAuth) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -50,7 +41,7 @@ function PublicRoute({ children }) {
 }
 
 function RootRedirect() {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   return isAuth ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 }
 
@@ -70,6 +61,7 @@ export default function App() {
               </PublicRoute>
             }
           />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             element={

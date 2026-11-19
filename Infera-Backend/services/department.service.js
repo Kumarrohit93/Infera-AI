@@ -1,6 +1,26 @@
 const { pool } = require("../config/db")
 const AppError = require("../utils/AppError")
 
+const DEFAULT_DEPARTMENTS = [
+  "HR",
+  "IT",
+  "Finance",
+  "Engineering",
+  "Operations",
+  "Sales",
+  "Marketing",
+]
+
+async function seedDefaultDepartments(client, organizationId) {
+  await client.query(
+    `INSERT INTO departments (organization_id, name)
+     SELECT $1, department_name
+     FROM unnest($2::text[]) AS defaults(department_name)
+     ON CONFLICT (organization_id, lower(name)) DO NOTHING`,
+    [organizationId, DEFAULT_DEPARTMENTS]
+  )
+}
+
 async function listDepartments(organizationId) {
   const result = await pool.query(
     `SELECT d.id, d.name, d.created_at,
@@ -39,4 +59,4 @@ async function createDepartment({ organizationId, name }) {
   }
 }
 
-module.exports = { listDepartments, createDepartment }
+module.exports = { listDepartments, createDepartment, seedDefaultDepartments }
