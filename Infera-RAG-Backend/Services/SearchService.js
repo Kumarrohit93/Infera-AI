@@ -4,118 +4,152 @@ const {
     countAuthorizedDocuments,
 } = require("../Repositories/SearchRepository");
 const { buildContext } = require("./ContextBuilder");
-const { generateAnswer } = require("./LLMService");
+const { generateAnswer, generateAnswerStream } = require("./LLMService");
 const { validateCitations } = require("./CitationValidator");
 
-/**
- * Search documents across multiple authorized documents and generate an answer with validated citations.
- */
-const searchDocuments = async ({
+const EMPTY_CITATION_VALIDATION = {
+    isValid: true,
+    usedCitations: [],
+    invalidCitations: [],
+};
+
+async function prepareSearch({
     query,
     organizationId,
     userId,
     role,
     limit = 5,
     minSimilarity = 0.50,
-}) => {
-    try {
-        // Validate user's question and organization.
-        if (!query || typeof query !== "string" || !query.trim()) {
-            throw new Error("Search query cannot be empty");
-        }
+}) {
+    if (!query || typeof query !== "string" || !query.trim()) {
+        throw new Error("Search query cannot be empty");
+    }
 
-        if (!organizationId) {
-            throw new Error("Organization ID is required");
-        }
+    if (!organizationId) {
+        throw new Error("Organization ID is required");
+    }
 
-        const effectiveRole = role || (userId ? "member" : "admin");
+    const normalizedQuery = query.trim();
+    const effectiveRole = role || (userId ? "member" : "admin");
+    const authorizedCount = await countAuthorizedDocuments({
+        organizationId,
+        userId,
+        role: effectiveRole,
+    });
 
-        // Check if the user has any authorized, ready documents in the organization.
-        const authorizedCount = await countAuthorizedDocuments({
-            organizationId,
-            userId,
-            role: effectiveRole,
-        });
+    if (authorizedCount === 0) {
+        return {
+            query: normalizedQuery,
+            answer: effectiveRole === "admin"
+                ? "No documents are currently indexed and ready in this organization."
+                : "You do not have access to any documents in this organization. Please contact your administrator.",
+            totalResults: 0,
+            sources: [],
+            citationValidation: EMPTY_CITATION_VALIDATION,
+        };
+    }
 
-        if (authorizedCount === 0) {
-            return {
-                query: query.trim(),
-                answer: effectiveRole === "admin"
-                    ? "No documents are currently indexed and ready in this organization."
-                    : "You do not have access to any documents in this organization. Please contact your administrator.",
-                totalResults: 0,
-                sources: [],
-                citationValidation: {
-                    isValid: true,
-                    usedCitations: [],
-                    invalidCitations: [],
-                },
-            };
-        }
+    const queryEmbedding = await generateEmbedding(
+        normalizedQuery,
+        "RETRIEVAL_QUERY"
+    );
+    const results = await searchSimilarChunks({
+        organizationId,
+        userId,
+        role: effectiveRole,
+        queryEmbedding,
+        query: normalizedQuery,
+        limit,
+        minSimilarity,
+    });
 
-        // Generate an embedding for the user's question.
-        const queryEmbedding = await generateEmbedding(
-            query.trim(),
-            "RETRIEVAL_QUERY"
-        );
+    if (results.length === 0) {
+        return {
+            query: normalizedQuery,
+            answer: "I could not find this information in the provided documents.",
+            totalResults: 0,
+            sources: [],
+            citationValidation: EMPTY_CITATION_VALIDATION,
+        };
+    }
 
-        // Retrieve relevant document chunks across authorized documents.
-        const results = await searchSimilarChunks({
-            organizationId,
-            userId,
-            role: effectiveRole,
-            queryEmbedding,
-            limit,
-            minSimilarity,
-        });
+    const { context, sources } = buildContext(results);
+    return {
+        query: normalizedQuery,
+        context,
+        totalResults: results.length,
+        sources,
+    };
+}
 
-        // Return a fallback when no relevant chunks match the similarity threshold.
-        if (results.length === 0) {
-            return {
-                query: query.trim(),
-                answer: "I could not find this information in the provided documents.",
-                totalResults: 0,
-                sources: [],
-                citationValidation: {
-                    isValid: true,
-                    usedCitations: [],
-                    invalidCitations: [],
-                },
-            };
-        }
-
-        // Build combined multi-document context and source references.
-        const { context, sources } = buildContext(results);
-
-        // Generate an answer using the retrieved context.
-        const generatedAnswer = await generateAnswer({
-            question: query.trim(),
-            context,
-        });
-
-        // Validate citation IDs against retrieved sources.
-        const citationValidation = validateCitations(
-            generatedAnswer,
-            sources
-        );
-
-        // Reject answers containing invalid citation IDs.
-        const answer = citationValidation.isValid
+function validateAnswer(generatedAnswer, sources) {
+    const citationValidation = validateCitations(generatedAnswer, sources);
+    return {
+        answer: citationValidation.isValid
             ? generatedAnswer
-            : "I could not provide a reliably cited answer from the retrieved documents.";
+            : "I could not provide a reliably cited answer from the retrieved documents.",
+        citationValidation,
+    };
+}
+
+async function searchDocuments(options) {
+    try {
+        const prepared = await prepareSearch(options);
+        if (prepared.answer) return prepared;
+
+        const generatedAnswer = await generateAnswer({
+            question: prepared.query,
+            context: prepared.context,
+        });
+        const { answer, citationValidation } = validateAnswer(
+            generatedAnswer,
+            prepared.sources
+        );
 
         return {
-            query: query.trim(),
+            query: prepared.query,
             answer,
-            totalResults: results.length,
-            sources,
+            totalResults: prepared.totalResults,
+            sources: prepared.sources,
             citationValidation,
         };
     } catch (error) {
         throw new Error(`Document Search Error: ${error.message}`);
     }
-};
+}
+
+async function searchDocumentsStream(options, { onSources, onToken } = {}) {
+    try {
+        const prepared = await prepareSearch(options);
+        if (onSources) onSources(prepared.sources || []);
+        if (prepared.answer) return prepared;
+
+        let generatedAnswer = "";
+        for await (const token of generateAnswerStream({
+            question: prepared.query,
+            context: prepared.context,
+        })) {
+            generatedAnswer += token;
+            if (onToken) onToken(token);
+        }
+
+        const { answer, citationValidation } = validateAnswer(
+            generatedAnswer,
+            prepared.sources
+        );
+        return {
+            query: prepared.query,
+            answer,
+            totalResults: prepared.totalResults,
+            sources: prepared.sources,
+            citationValidation,
+        };
+    } catch (error) {
+        throw new Error(`Document Search Error: ${error.message}`);
+    }
+}
 
 module.exports = {
     searchDocuments,
+    searchDocumentsStream,
 };

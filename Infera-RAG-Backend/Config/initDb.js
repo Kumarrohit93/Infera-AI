@@ -2,102 +2,77 @@ const fs = require("fs");
 const path = require("path");
 const pool = require("./db");
 
-/**
- * Initializes required tables for Chat History Persistence and RAG Access Control.
- * Safe to run multiple times (idempotent IF NOT EXISTS queries).
- */
-async function initDb() {
+const schemaFiles = [
+  "folders.sql",
+  "documents.sql",
+  "document_versions.sql",
+  "document_chunks.sql",
+  "folder_permissions.sql",
+  "conversations.sql",
+  "feedback.sql",
+];
+
+async function applyVectorIndexMigration() {
+  const currentIndex = await pool.query(
+    `SELECT indexdef FROM pg_indexes
+      WHERE schemaname = current_schema()
+        AND indexname = 'idx_document_chunks_embedding_hnsw'`
+  );
+  if (currentIndex.rows[0]?.indexdef?.includes("vector_cosine_ops")) return;
+
+  const client = await pool.connect();
   try {
-    // 1. Folders
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS folders (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-          parent_folder_id UUID,
-          name VARCHAR(150) NOT NULL,
-          description TEXT,
-          created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (id, organization_id)
-      );
+    await client.query("BEGIN");
+    await client.query("LOCK TABLE document_chunks IN SHARE ROW EXCLUSIVE MODE");
+    await client.query("DROP INDEX IF EXISTS idx_document_chunks_embedding_hnsw");
+    await client.query(`
+      CREATE INDEX idx_document_chunks_embedding_hnsw
+      ON document_chunks
+      USING hnsw (embedding vector_cosine_ops)
     `);
-
-    // 2. Folder Permissions
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS folder_permissions (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          organization_id UUID NOT NULL,
-          folder_id UUID NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          permission VARCHAR(10) NOT NULL CHECK (permission IN ('view', 'upload', 'edit', 'manage')),
-          granted_by UUID REFERENCES users(id) ON DELETE SET NULL,
-          expires_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (folder_id, user_id)
-      );
-    `);
-
-    // 3. Conversations
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS conversations (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          title VARCHAR(200) NOT NULL DEFAULT 'New Conversation',
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (id, organization_id)
-      );
-      CREATE INDEX IF NOT EXISTS idx_conversations_user_updated
-          ON conversations(organization_id, user_id, updated_at DESC);
-    `);
-
-    // 4. Messages
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-          organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-          role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant')),
-          content TEXT NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (id, organization_id),
-          UNIQUE (id, organization_id, role)
-      );
-      CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
-          ON messages(conversation_id, created_at ASC);
-    `);
-
-    // 5. Message Sources
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS message_sources (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-          message_id UUID NOT NULL,
-          role VARCHAR(10) NOT NULL DEFAULT 'assistant' CHECK (role = 'assistant'),
-          document_id UUID,
-          chunk_id UUID,
-          source_id INTEGER NOT NULL CHECK (source_id > 0),
-          document_name VARCHAR(255) NOT NULL,
-          heading VARCHAR(255),
-          page_number INTEGER,
-          similarity REAL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          UNIQUE (message_id, source_id),
-          CONSTRAINT fk_message_sources_message
-              FOREIGN KEY (message_id, organization_id, role)
-              REFERENCES messages(id, organization_id, role)
-              ON DELETE CASCADE
-      );
-      CREATE INDEX IF NOT EXISTS idx_message_sources_message
-          ON message_sources(message_id, source_id ASC);
-    `);
-
-    console.log("[Database] Chat history & permission tables verified.");
-  } catch (err) {
-    console.error("[Database] Failed to verify chat history tables:", err.message);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
+}
+
+async function verifyEmbeddingDimension() {
+  const expectedDimension = Number(process.env.EMBEDDING_DIMENSION || 1536);
+  if (expectedDimension !== 1536) {
+    throw new Error(
+      "This database schema requires EMBEDDING_DIMENSION=1536; changing dimensions requires re-embedding stored documents."
+    );
+  }
+  const result = await pool.query(
+    `SELECT format_type(a.atttypid, a.atttypmod) AS embedding_type
+     FROM pg_attribute a
+     JOIN pg_class c ON c.oid = a.attrelid
+     WHERE c.relname = 'document_chunks'
+       AND a.attname = 'embedding'
+       AND NOT a.attisdropped`
+  );
+  const expectedType = `vector(${expectedDimension})`;
+  if (result.rows[0]?.embedding_type !== expectedType) {
+    throw new Error(
+      `Embedding dimension mismatch: database has ${result.rows[0]?.embedding_type || "no embedding column"} but EMBEDDING_DIMENSION is ${expectedDimension}`
+    );
+  }
+}
+
+async function initDb() {
+  await pool.query("CREATE EXTENSION IF NOT EXISTS vector");
+
+  for (const file of schemaFiles) {
+    const sql = fs.readFileSync(path.join(__dirname, "..", "DB", file), "utf8");
+    await pool.query(sql);
+  }
+
+  await verifyEmbeddingDimension();
+  await applyVectorIndexMigration();
+  console.log("[Database] RAG schema and vector index are ready.");
 }
 
 module.exports = { initDb };

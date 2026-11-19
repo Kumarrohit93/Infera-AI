@@ -5,12 +5,6 @@ const {
 const documentService = require("../Services/document.service");
 const { deleteDocument: removeDocument } = require("../Services/documentDelete.service");
 const { parseOrThrow } = require("../utils/validate");
-  listDocumentsQuerySchema,
-} = require("../validators/document.validator")
-const documentService = require("../Services/document.service")
-const { deleteDocument: removeDocument } = require("../Services/documentDelete.service")
-const { listDocuments: findDocuments } = require("../Services/documentList.service")
-const { parseOrThrow } = require("../utils/validate")
 
 async function uploadDocument(req, res) {
   const { folderId } = parseOrThrow(uploadDocumentSchema, req.body);
@@ -21,6 +15,26 @@ async function uploadDocument(req, res) {
     file: req.file,
   });
   res.status(202).json({ success: true, data: { document } });
+}
+
+async function uploadDocumentVersion(req, res) {
+  const { id } = parseOrThrow(documentIdParamSchema, req.params);
+  const version = await documentService.uploadDocumentVersion({
+    organizationId: req.user.organizationId,
+    userId: req.user.userId,
+    documentId: id,
+    file: req.file,
+  });
+  res.status(202).json({ success: true, data: { version } });
+}
+
+async function listDocumentVersions(req, res) {
+  const { id } = parseOrThrow(documentIdParamSchema, req.params);
+  const versions = await documentService.listDocumentVersions({
+    organizationId: req.user.organizationId,
+    documentId: id,
+  });
+  res.status(200).json({ success: true, data: versions });
 }
 
 async function listDocuments(req, res) {
@@ -34,15 +48,6 @@ async function listDocuments(req, res) {
   res.status(200).json({ success: true, data: documents });
 }
 
-async function listDocuments(req, res) {
-  const query = parseOrThrow(listDocumentsQuerySchema, req.query)
-  const { documents, meta } = await findDocuments({
-    organizationId: req.user.organizationId,
-    ...query,
-  })
-  res.json({ success: true, data: documents, meta })
-}
-
 async function deleteDocument(req, res) {
   const { id } = parseOrThrow(documentIdParamSchema, req.params);
   await removeDocument({
@@ -52,4 +57,10 @@ async function deleteDocument(req, res) {
   res.status(204).send();
 }
 
-module.exports = { uploadDocument, listDocuments, deleteDocument };
+module.exports = {
+  uploadDocument,
+  uploadDocumentVersion,
+  listDocumentVersions,
+  listDocuments,
+  deleteDocument,
+};

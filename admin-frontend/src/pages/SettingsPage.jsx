@@ -1,6 +1,7 @@
-import React, { useState, useRef, useId } from 'react';
+import { useState, useRef, useId } from 'react';
 import { motion } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authApi } from '../services/api';
 import {
   Building2,
   Cpu,
@@ -10,10 +11,89 @@ import {
   Upload,
   Save,
   LogOut,
-  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+
+const SETTINGS_STORAGE_KEY = 'infera_admin_settings_v1';
+
+const DEFAULT_ORG = {
+  name: 'Infera Enterprise Solutions Pvt. Ltd.',
+  domain: 'infera.ai',
+  logoName: 'Infera_AI_logo_vector.svg',
+  logoPreview: null
+};
+
+const DEFAULT_AI = {
+  provider: 'OpenAI Enterprise',
+  model: 'gpt-4o (128k Context)',
+  temperature: 0.2,
+  topK: 4,
+  chunkSize: 800,
+  embeddingModel: 'gemini-embedding-001',
+  strictGrounding: true
+};
+
+const DEFAULT_PERMISSIONS = {
+  viewExcerpts: true,
+  allowDownloads: true,
+  autoAssignGeneral: true,
+  enforce2FA: true,
+  defaultFolderAccess: 'Restricted (Explicit Member Selection)'
+};
+
+const DEFAULT_INTEGRATIONS = [
+  {
+    id: 'gdrive',
+    name: 'Google Drive Workspace',
+    status: 'Connected',
+    description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
+    actionText: 'Disconnect',
+    actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
+  },
+  {
+    id: 'slack',
+    name: 'Slack Knowledge Bot',
+    status: 'Connected',
+    description: 'Allow team members to query @InferaAI directly inside Slack channels.',
+    actionText: 'Configure',
+    actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
+  },
+  {
+    id: 'notion',
+    name: 'Notion Internal Wiki',
+    status: 'Available',
+    description: 'Ingest engineering handbooks and operational SOP pages automatically.',
+    actionText: 'Connect',
+    actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+  },
+  {
+    id: 'sharepoint',
+    name: 'Microsoft SharePoint',
+    status: 'Available',
+    description: 'Enterprise connector for legal and compliance document libraries.',
+    actionText: 'Connect',
+    actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
+  }
+];
+
+const DEFAULT_PROFILE = {
+  name: 'Jiya Sharma',
+  email: 'jiyasharma@infera.ai',
+  role: 'Workspace Admin',
+  currentPassword: '',
+  newPassword: ''
+};
+
+function loadSavedSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 const TABS = [
   { id: 'organization', label: 'Organization', icon: Building2 },
@@ -29,94 +109,69 @@ export default function SettingsPage() {
   const logoInputRef = useRef(null);
   const logoGradId = useId();
   const [activeTab, setActiveTab] = useState('organization');
+  const { data: account } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: authApi.getCurrentUser,
+    retry: false,
+  });
+
+  const [savedInitial] = useState(() => loadSavedSettings());
 
   // Tab 1: Organization State
-  const [orgData, setOrgData] = useState({
-    name: 'Infera Enterprise Solutions Pvt. Ltd.',
-    domain: 'infera.ai',
-    logoName: 'Infera_AI_logo_vector.svg',
-    logoPreview: null
-  });
+  const [orgData, setOrgData] = useState(() => ({
+    ...DEFAULT_ORG,
+    ...(savedInitial?.orgData || {})
+  }));
 
   // Tab 2: AI & Model State
-  const [aiData, setAiData] = useState({
-    provider: 'OpenAI Enterprise',
-    model: 'gpt-4o (128k Context)',
-    temperature: 0.2,
-    topK: 4,
-    chunkSize: 800,
-    embeddingModel: 'text-embedding-3-large',
-    strictGrounding: true
-  });
+  const [aiData, setAiData] = useState(() => ({
+    ...DEFAULT_AI,
+    ...(savedInitial?.aiData || {})
+  }));
 
   // Tab 3: Access & Permissions State
-  const [permissions, setPermissions] = useState({
-    viewExcerpts: true,
-    allowDownloads: true,
-    autoAssignGeneral: true,
-    enforce2FA: true,
-    defaultFolderAccess: 'Restricted (Explicit Member Selection)'
-  });
+  const [permissions, setPermissions] = useState(() => ({
+    ...DEFAULT_PERMISSIONS,
+    ...(savedInitial?.permissions || {})
+  }));
 
   // Tab 4: Integrations State
-  const [integrations, setIntegrations] = useState([
-    {
-      id: 'gdrive',
-      name: 'Google Drive Workspace',
-      status: 'Connected',
-      description: 'Auto-sync approved PDF and DOCX files from shared departmental drives.',
-      actionText: 'Disconnect',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#A83833] hover:border-[#F3C9C6]'
-    },
-    {
-      id: 'slack',
-      name: 'Slack Knowledge Bot',
-      status: 'Connected',
-      description: 'Allow team members to query @InferaAI directly inside Slack channels.',
-      actionText: 'Configure',
-      actionStyle: 'border-[#E8DCD1] text-[#77716B] hover:text-[#96613F] hover:border-[#96613F]'
-    },
-    {
-      id: 'notion',
-      name: 'Notion Internal Wiki',
-      status: 'Available',
-      description: 'Ingest engineering handbooks and operational SOP pages automatically.',
-      actionText: 'Connect',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    },
-    {
-      id: 'sharepoint',
-      name: 'Microsoft SharePoint',
-      status: 'Available',
-      description: 'Enterprise connector for legal and compliance document libraries.',
-      actionText: 'Connect',
-      actionStyle: 'bg-[#96613F] text-white hover:bg-[#4A3023]'
-    }
-  ]);
+  const [integrations] = useState(() =>
+    Array.isArray(savedInitial?.integrations)
+      ? savedInitial.integrations
+      : DEFAULT_INTEGRATIONS
+  );
 
   // Tab 5: General / Admin Profile State
-  const [profileData, setProfileData] = useState({
-    name: 'Jiya Sharma',
-    email: 'jiyasharma@infera.ai',
-    role: 'Workspace Admin',
-    currentPassword: '',
-    newPassword: ''
-  });
+  const [profileData, setProfileData] = useState(() => ({
+    ...DEFAULT_PROFILE,
+    ...(savedInitial?.profileData || {})
+  }));
 
-  // TanStack Mutation for saving settings
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (message) => {
-      // In real backend, this will call PATCH /api/organizations/current
-      return message;
-    },
-    onSuccess: (message) => {
-      queryClient.invalidateQueries({ queryKey: ['organization'] });
-      toast.success(message);
+  const persistSettings = (overrides = {}) => {
+    try {
+      const nextProfile = {
+        name: (overrides.profileData ?? profileData).name,
+        email: (overrides.profileData ?? profileData).email,
+        role: (overrides.profileData ?? profileData).role
+      };
+      const payload = {
+        orgData: overrides.orgData ?? orgData,
+        aiData: overrides.aiData ?? aiData,
+        permissions: overrides.permissions ?? permissions,
+        integrations: overrides.integrations ?? integrations,
+        profileData: nextProfile
+      };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+      queryClient.setQueryData(['adminProfile'], nextProfile);
+    } catch {
+      // Ignore storage quota errors
     }
-  });
+  };
 
-  const handleSave = (message) => {
-    saveSettingsMutation.mutate(message);
+  const handleSave = () => {
+    persistSettings();
+    toast.error('Settings changes are not saved: the backend does not expose a settings endpoint yet.');
   };
 
   const handleLogoUpload = (e) => {
@@ -126,18 +181,32 @@ export default function SettingsPage() {
       toast.error('Logo file must be under 2MB.');
       return;
     }
-    const previewUrl = URL.createObjectURL(file);
-    setOrgData((prev) => ({
-      ...prev,
-      logoName: file.name,
-      logoPreview: previewUrl
-    }));
-    toast.success(`Logo "${file.name}" selected.`);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const updatedOrg = {
+        ...orgData,
+        logoName: file.name,
+        logoPreview: typeof reader.result === 'string' ? reader.result : null
+      };
+      setOrgData(updatedOrg);
+      persistSettings({ orgData: updatedOrg });
+      toast.success(`Logo "${file.name}" uploaded.`);
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch((error) => console.error('Could not revoke the server session:', error));
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('infera_admin_query_cache_v1');
+    queryClient.clear();
     toast.success('Logged out successfully.');
     navigate('/login', { replace: true });
   };
@@ -151,6 +220,9 @@ export default function SettingsPage() {
         </h2>
         <p className="text-xs sm:text-sm text-[#77716B] mt-1">
           Manage organization branding, AI retrieval hyperparameters, permissions, and account security.
+        </p>
+        <p className="mt-3 rounded-lg border border-[#E8DCD1] bg-white px-3 py-2 text-xs text-[#77716B]">
+          Organization profile details are loaded from the auth backend. Settings, password changes, and external integrations are not writable because these backend endpoints are not implemented yet.
         </p>
       </div>
 
@@ -203,7 +275,7 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    value={orgData.name}
+                    value={orgData.name || account?.organization?.name || ''}
                     onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                   />
@@ -295,15 +367,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Organization settings saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Organization Settings</span>
                 </button>
               </div>
@@ -418,9 +485,9 @@ export default function SettingsPage() {
                     Embedding Model
                   </p>
                   <p className="text-xs font-bold text-[#25211E] mt-2">
-                    text-embedding-3-large
+                    gemini-embedding-001
                   </p>
-                  <p className="text-[11px] text-[#77716B] mt-0.5">3,072 dimensions • Active</p>
+                  <p className="text-[11px] text-[#77716B] mt-0.5">1,536 dimensions • Active</p>
                 </div>
               </div>
 
@@ -444,15 +511,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('AI & Model parameters saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save AI Configuration</span>
                 </button>
               </div>
@@ -561,15 +623,10 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-[#F3E8DC] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleSave('Access control policies saved.')}
-                  disabled={saveSettingsMutation.isPending}
+                  onClick={handleSave}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] disabled:opacity-50 text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 cursor-pointer"
                 >
-                  {saveSettingsMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
+                  <Save className="w-4 h-4" />
                   <span>Save Permissions</span>
                 </button>
               </div>
@@ -585,7 +642,7 @@ export default function SettingsPage() {
               className="bg-[#FFFFFF] border border-[#E8DCD1] rounded-[14px] p-6 sm:p-8 shadow-sm space-y-6"
             >
               <div>
-                <h3 className="text-base font-bold text-[#25211E] tracking-tight">Connected Enterprise Integrations</h3>
+                <h3 className="text-base font-bold text-[#25211E] tracking-tight">External Integrations</h3>
                 <p className="text-xs text-[#77716B] mt-1">
                   Sync external cloud repositories and pipe AI retrieval tools to messaging tools.
                 </p>
@@ -626,8 +683,8 @@ export default function SettingsPage() {
                       <div className="flex justify-end pt-3 border-t border-[#E8DCD1]">
                         <button
                           type="button"
-                          onClick={() => toast.success(`${item.name} configuration clicked.`)}
-                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border transition-all duration-150 active:scale-95 cursor-pointer ${item.actionStyle}`}
+                          disabled
+                          className={`px-3.5 py-1.5 rounded-[8px] text-xs font-semibold border opacity-60 cursor-not-allowed ${item.actionStyle}`}
                         >
                           {item.actionText}
                         </button>
@@ -659,7 +716,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Full Name</label>
                     <input
                       type="text"
-                      value={profileData.name}
+                      value={profileData.name || account?.user?.name || ''}
                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -669,7 +726,7 @@ export default function SettingsPage() {
                     <label className="block font-semibold text-[#25211E] mb-1.5">Admin Email</label>
                     <input
                       type="email"
-                      value={profileData.email}
+                      value={profileData.email || account?.user?.email || ''}
                       onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[10px] text-[#25211E] font-medium focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all"
                     />
@@ -680,7 +737,7 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       disabled
-                      value={profileData.role}
+                      value={profileData.role || (account?.role === 'admin' ? 'Workspace Admin' : account?.role || '')}
                       className="w-full px-3.5 py-2.5 bg-[#FAF7F2]/60 border border-[#E8DCD1] rounded-[10px] text-[#77716B] font-medium cursor-not-allowed"
                     />
                   </div>
@@ -689,7 +746,7 @@ export default function SettingsPage() {
                 <div className="flex justify-end mt-4">
                   <button
                     type="button"
-                    onClick={() => handleSave('Admin profile updated.')}
+                    onClick={handleSave}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -734,8 +791,7 @@ export default function SettingsPage() {
                         toast.error('Please enter both current and new passwords.');
                         return;
                       }
-                      handleSave('Administrator password updated successfully.');
-                      setProfileData({ ...profileData, currentPassword: '', newPassword: '' });
+                      handleSave();
                     }}
                     className="px-4 py-2 rounded-[8px] bg-white hover:bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] text-xs font-semibold text-[#25211E] transition-all duration-150 active:scale-95 cursor-pointer"
                   >

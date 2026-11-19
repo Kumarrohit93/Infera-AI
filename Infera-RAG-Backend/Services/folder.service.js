@@ -9,7 +9,7 @@ const SELECT_FOLDER = `
             FROM documents d
            WHERE d.folder_id = f.id
              AND d.organization_id = f.organization_id) AS document_count,
-         (SELECT COALESCE(json_agg(u.name), '[]'::json)
+         (SELECT COALESCE(json_agg(u.id::text), '[]'::json)
             FROM folder_permissions fp
             JOIN users u ON u.id = fp.user_id
            WHERE fp.folder_id = f.id) AS members
@@ -22,6 +22,7 @@ function toFolder(row) {
     name: row.name,
     description: row.description,
     documentCount: row.document_count || 0,
+    docCount: row.document_count || 0,
     members: row.members || [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -59,18 +60,29 @@ async function syncFolderPermissions(organizationId, folderId, memberIdentifiers
   if (!Array.isArray(memberIdentifiers)) return;
   const userIds = await resolveUserIds(organizationId, memberIdentifiers);
 
-  await pool.query(
-    "DELETE FROM folder_permissions WHERE folder_id = $1 AND organization_id = $2",
-    [folderId, organizationId]
-  ).catch(() => {});
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "DELETE FROM folder_permissions WHERE folder_id = $1 AND organization_id = $2",
+      [folderId, organizationId]
+    );
 
-  for (const uid of userIds) {
-    await pool.query(
-      `INSERT INTO folder_permissions (organization_id, folder_id, user_id, permission, granted_by)
-       VALUES ($1, $2, $3, 'view', $4)
-       ON CONFLICT (folder_id, user_id) DO NOTHING`,
-      [organizationId, folderId, uid, grantedBy]
-    ).catch(() => {});
+    for (const uid of userIds) {
+      await client.query(
+        `INSERT INTO folder_permissions (organization_id, folder_id, user_id, permission, granted_by)
+         VALUES ($1, $2, $3, 'view', $4)
+         ON CONFLICT (folder_id, user_id) DO NOTHING`,
+        [organizationId, folderId, uid, grantedBy]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
 }
 
@@ -106,16 +118,44 @@ async function createFolder({ organizationId, userId, name, description, members
   }
 }
 
-async function listFolders({ organizationId, search }) {
+async function listFolders({ organizationId, userId, role = "member", search }) {
   const values = [organizationId];
-  let filter = "";
+  const filters = [];
+
+  if (role !== "admin") {
+    values.push(userId);
+    filters.push(`EXISTS (
+      SELECT 1 FROM folder_permissions fp
+      WHERE fp.folder_id = f.id
+        AND fp.organization_id = f.organization_id
+        AND fp.user_id = $${values.length}
+        AND (fp.expires_at IS NULL OR fp.expires_at > NOW())
+    )`);
+  }
+
   if (search) {
     values.push(search);
-    filter = "AND position(lower($2) in lower(f.name)) > 0";
+    filters.push(`position(lower($${values.length}) in lower(f.name)) > 0`);
   }
+
+  const membersColumn = role === "admin"
+    ? `(SELECT COALESCE(json_agg(u.id::text), '[]'::json)
+         FROM folder_permissions fp
+         JOIN users u ON u.id = fp.user_id
+        WHERE fp.folder_id = f.id)`
+    : "'[]'::json";
+
   const { rows } = await pool.query(
-    `${SELECT_FOLDER}
-      WHERE f.organization_id = $1 AND f.parent_folder_id IS NULL ${filter}
+    `SELECT f.id, f.name, f.description, f.created_at, f.updated_at,
+            (SELECT count(*)::int
+               FROM documents d
+              WHERE d.folder_id = f.id
+                AND d.organization_id = f.organization_id) AS document_count,
+            ${membersColumn} AS members
+       FROM folders f
+      WHERE f.organization_id = $1
+        AND f.parent_folder_id IS NULL
+        ${filters.map((filter) => `AND ${filter}`).join("\n")}
       ORDER BY lower(f.name)`,
     values
   );

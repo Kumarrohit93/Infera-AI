@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +28,21 @@ const PAGE_META = {
   '/settings': { title: 'Settings', subtitle: 'Configure organization, models & security' }
 };
 
+function getStoredAdminProfile() {
+  try {
+    const raw = localStorage.getItem('infera_admin_settings_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.profileData?.name) {
+        return parsed.profileData;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return { name: 'Jiya Sharma', email: 'jiyasharma@infera.ai', role: 'Admin' };
+}
+
 export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,6 +57,25 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const searchRef = useRef(null);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  // Sync Admin Profile with SettingsPage -> General tab
+  const { data: adminProfile } = useQuery({
+    queryKey: ['adminProfile'],
+    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    enabled: false
+  });
+
+  const adminName = adminProfile?.name?.trim() || 'Jiya Sharma';
+  const adminRole = adminProfile?.role?.trim() || 'Admin';
+  const adminInitials =
+    adminName
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'JS';
 
   // Subscribe to existing TanStack Query caches without triggering extra fetches
   const { data: documents = [] } = useQuery({
@@ -178,6 +212,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
 
   const handleLogout = () => {
     setShowProfileMenu(false);
+    localStorage.removeItem('accessToken');
     if (onLogout) {
       onLogout();
     } else {
@@ -514,11 +549,11 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
             }`}
           >
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#96613F] text-white text-[11px] sm:text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs">
-              JS
+              {adminInitials}
             </div>
             <div className="hidden md:block leading-tight text-left">
-              <p className="text-xs font-semibold text-[#25211E]">Jiya Sharma</p>
-              <p className="text-[10px] text-[#77716B]">Admin</p>
+              <p className="text-xs font-semibold text-[#25211E]">{adminName}</p>
+              <p className="text-[10px] text-[#77716B]">{adminRole}</p>
             </div>
             <ChevronDown
               className={`hidden md:block w-3.5 h-3.5 text-[#77716B] transition-transform duration-200 ${
@@ -538,8 +573,8 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
                 className="absolute right-0 mt-2 w-52 bg-[#FFFFFF]/95 backdrop-blur-md border border-[#E8DCD1] rounded-[12px] shadow-xl z-50 overflow-hidden"
               >
                 <div className="px-3.5 py-2.5 bg-[#FAF7F2] border-b border-[#E8DCD1]">
-                  <p className="text-xs font-bold text-[#25211E] truncate">Jiya Sharma</p>
-                  <p className="text-[11px] text-[#77716B] truncate">Admin</p>
+                  <p className="text-xs font-bold text-[#25211E] truncate">{adminName}</p>
+                  <p className="text-[11px] text-[#77716B] truncate">{adminRole}</p>
                 </div>
 
                 <div className="p-1.5 space-y-0.5">

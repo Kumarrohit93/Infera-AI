@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -12,61 +11,21 @@ import TeamMembersPage from './pages/TeamMembersPage';
 import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
 import ChatPage from './pages/ChatPage';
-
-const CACHE_STORAGE_KEY = 'infera_admin_query_cache_v1';
-const PERSISTED_ROOT_KEYS = new Set(['folders', 'members', 'employees', 'documents']);
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // TanStack Query Client Configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes fresh cache
+      staleTime: 0, // always refetch from the backend when a page mounts
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// Hydrate cached folders, documents, employees, and members from localStorage
-try {
-  const raw = localStorage.getItem(CACHE_STORAGE_KEY);
-  if (raw) {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      parsed.forEach((entry) => {
-        if (entry?.queryKey && entry.data !== undefined) {
-          queryClient.setQueryData(entry.queryKey, entry.data);
-        }
-      });
-    }
-  }
-} catch {
-  // Ignore malformed localStorage cache
-}
-
-// Persist cache updates to localStorage until backend is connected
-queryClient.getQueryCache().subscribe((event) => {
-  if (!event?.query) return;
-  const rootKey = event.query.queryKey?.[0];
-  if (!PERSISTED_ROOT_KEYS.has(rootKey)) return;
-
-  try {
-    const entries = queryClient
-      .getQueryCache()
-      .getAll()
-      .filter((q) => PERSISTED_ROOT_KEYS.has(q.queryKey?.[0]) && q.state.data !== undefined)
-      .map((q) => ({
-        queryKey: q.queryKey,
-        data: q.state.data,
-      }));
-    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // Ignore storage quota or serialization errors
-  }
-});
-
 function ProtectedRoute({ children }) {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   if (!isAuth) {
     return <Navigate to="/login" replace />;
   }
@@ -74,7 +33,7 @@ function ProtectedRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   if (isAuth) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -82,7 +41,7 @@ function PublicRoute({ children }) {
 }
 
 function RootRedirect() {
-  const isAuth = localStorage.getItem('isAdminAuth') === 'true';
+  const isAuth = localStorage.getItem('isAdminAuth') === 'true' && Boolean(localStorage.getItem('accessToken'));
   return isAuth ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 }
 
@@ -102,6 +61,7 @@ export default function App() {
               </PublicRoute>
             }
           />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             element={
