@@ -3,7 +3,14 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, documentApi, folderApi, memberApi, feedbackApi } from '../services/api';
+import {
+  analyticsApi,
+  authApi,
+  documentApi,
+  folderApi,
+  memberApi,
+  feedbackApi
+} from '../services/api';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -33,21 +40,6 @@ import {
 import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
 import toast from 'react-hot-toast';
-
-function getStoredAdminProfile() {
-  try {
-    const raw = localStorage.getItem('infera_admin_settings_v1');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.profileData?.name) {
-        return parsed.profileData;
-      }
-    }
-  } catch {
-    // ignore storage errors
-  }
-  return
-}
 
 // Framer motion variants
 const containerVariants = {
@@ -96,6 +88,17 @@ function CustomTooltip({ active, payload, label }) {
   return null;
 }
 
+function formatTimeAgo(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Time unavailable';
+
+  const secondsAgo = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (secondsAgo < 60) return 'Just now';
+  if (secondsAgo < 3600) return `${Math.floor(secondsAgo / 60)}m ago`;
+  if (secondsAgo < 86400) return `${Math.floor(secondsAgo / 3600)}h ago`;
+  return `${Math.floor(secondsAgo / 86400)}d ago`;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -105,16 +108,11 @@ export default function DashboardPage() {
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
 
-  // Sync Admin Profile with SettingsPage -> General tab
-  const { data: adminProfile } = useQuery({
-    queryKey: ['adminProfile'],
-    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
-    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
-    enabled: false
-  });
-
-  // TanStack Query: Live cache connection for documents, folders and members (ZERO MOCK DATA)
-  const { data: account } = useQuery({
+  const {
+    data: account,
+    isError: accountError,
+    error: accountQueryError
+  } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,
     retry: false,
@@ -150,6 +148,23 @@ export default function DashboardPage() {
     retry: false,
   });
 
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    isError: analyticsError,
+    error: analyticsQueryError
+  } = useQuery({
+    queryKey: ['dashboard-analytics'],
+    queryFn: analyticsApi.getDashboard,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (accountError) toast.error(accountQueryError?.message || 'Failed to load your account.');
+  }, [accountError, accountQueryError]);
+
   useEffect(() => {
     if (documentsError) toast.error(documentsQueryError?.message || 'Failed to load documents.');
   }, [documentsError, documentsQueryError]);
@@ -162,13 +177,19 @@ export default function DashboardPage() {
     if (membersError) toast.error(membersQueryError?.message || 'Failed to load team members.');
   }, [membersError, membersQueryError]);
 
+  useEffect(() => {
+    if (analyticsError) {
+      toast.error(analyticsQueryError?.message || 'Failed to load dashboard analytics.');
+    }
+  }, [analyticsError, analyticsQueryError]);
+
   const effectiveUploadFolder = folders.some((folder) => folder.name === targetUploadFolder)
     ? targetUploadFolder
     : folders[0]?.name || '';
 
-  // Zero mock data - backend se aayega
-  const [chartData] = useState([]);
-  const [recentActivities] = useState([]);
+  const chartData = analytics?.chartData ?? [];
+  const recentActivities = analytics?.recentActivities ?? [];
+  const hasQueryActivity = chartData.some((item) => item.queries > 0 || item.citations > 0);
 
   // Pipeline calculations
   const completedCount = documents.filter((d) => d.status === 'Completed').length;
@@ -203,6 +224,7 @@ export default function DashboardPage() {
 
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-analytics'] });
       setIsUploadFolderModalOpen(false);
       toast.success(`${files.length} document(s) uploaded to "${folder.name}".`);
     } catch (err) {
@@ -342,14 +364,20 @@ export default function DashboardPage() {
 
             {/* Chart or Clean Empty State */}
             <div className="h-64 sm:h-72 w-full pt-4 flex items-center justify-center">
-              {chartData.length === 0 ? (
+              {analyticsLoading ? (
+                <p className="text-xs text-[#77716B]">Loading query analytics…</p>
+              ) : analyticsError ? (
+                <p className="text-xs text-[#A83833]">
+                  Could not load query analytics: {analyticsQueryError?.message || 'Please try again.'}
+                </p>
+              ) : !hasQueryActivity ? (
                 <div className="text-center p-6">
                   <div className="w-12 h-12 rounded-full bg-[#FAF7F2] border border-[#E8DCD1] flex items-center justify-center text-[#77716B] mx-auto mb-3 shadow-inner">
                     <BarChart3 className="w-6 h-6" />
                   </div>
-                  <h4 className="text-sm font-bold text-[#25211E]">Query analytics are unavailable</h4>
+                  <h4 className="text-sm font-bold text-[#25211E]">No queries in the last 7 days</h4>
                   <p className="text-xs text-[#77716B] max-w-sm mx-auto mt-1 leading-relaxed">
-                    The current backend APIs do not expose query and citation analytics.
+                    New questions and their citations will appear here automatically.
                   </p>
                 </div>
               ) : (
@@ -571,7 +599,9 @@ export default function DashboardPage() {
                 <h3 className="text-sm sm:text-base font-bold text-[#25211E]">
                   Recent Activity
                 </h3>
-                <p className="text-[11px] sm:text-xs text-[#77716B]">Audit trail of workspace events</p>
+                <p className="text-[11px] sm:text-xs text-[#77716B]">
+                  Latest uploads, questions, feedback, and team activity
+                </p>
               </div>
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#EEF5F0] text-[#2B6141] border border-[#CBE3D3]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2B6141] animate-ping" />
@@ -580,11 +610,17 @@ export default function DashboardPage() {
             </div>
 
             <div className="bg-[#FFFFFF] border border-[#E8DCD1] hover:border-[#96613F]/30 rounded-[16px] p-5 shadow-sm hover:shadow-[0_10px_28px_-10px_rgba(150,97,63,0.12)] transition-all duration-300">
-              {recentActivities.length === 0 ? (
+              {analyticsLoading ? (
+                <p className="py-10 text-center text-xs text-[#77716B]">Loading recent activity…</p>
+              ) : analyticsError ? (
+                <p className="py-10 text-center text-xs text-[#A83833]">
+                  Could not load recent activity: {analyticsQueryError?.message || 'Please try again.'}
+                </p>
+              ) : recentActivities.length === 0 ? (
                 <div className="py-10 text-center">
-                  <p className="text-xs font-semibold text-[#25211E]">Activity feed unavailable</p>
+                  <p className="text-xs font-semibold text-[#25211E]">No recent activity yet</p>
                   <p className="text-[11px] text-[#77716B] mt-1 max-w-xs mx-auto">
-                    The current backend APIs do not expose an organization activity feed.
+                    New uploads, questions, and team changes will appear here.
                   </p>
                 </div>
               ) : (
@@ -596,7 +632,9 @@ export default function DashboardPage() {
                         <span className="text-[#77716B]">{item.action}</span>{' '}
                         <span className="font-semibold text-[#96613F]">{item.target}</span>
                       </p>
-                      <p className="text-[10px] text-[#77716B] mt-0.5">{item.time}</p>
+                      <p className="text-[10px] text-[#77716B] mt-0.5">
+                        {formatTimeAgo(item.createdAt)}
+                      </p>
                     </div>
                   ))}
                 </div>
