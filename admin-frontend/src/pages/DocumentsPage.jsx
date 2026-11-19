@@ -56,7 +56,12 @@ export default function DocumentsPage() {
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
 
   // TanStack Query: Fetch Folders dynamically (Synchronised with FoldersPage, Zero Mock Data)
-  const { data: folders = [], isError: foldersError, error: foldersQueryError } = useQuery({
+  const {
+    data: folders = [],
+    isFetched: foldersFetched,
+    isError: foldersError,
+    error: foldersQueryError
+  } = useQuery({
     queryKey: ['folders'],
     queryFn: folderApi.getFolders,
     initialData: [],
@@ -68,19 +73,32 @@ export default function DocumentsPage() {
     if (foldersError) toast.error(foldersQueryError?.message || 'Failed to load folders.');
   }, [foldersError, foldersQueryError]);
 
+  const selectedFolder = folders.find(
+    (folder) => folder.id === selectedFolderFilter || folder.name === selectedFolderFilter
+  );
+
+  useEffect(() => {
+    if (!foldersFetched || selectedFolderFilter === 'All') return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (selectedFolder) {
+      if (selectedFolderFilter === selectedFolder.id) return;
+      nextParams.set('folder', selectedFolder.id);
+    } else {
+      nextParams.delete('folder');
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [foldersFetched, searchParams, selectedFolder, selectedFolderFilter, setSearchParams]);
+
   const effectiveUploadFolder = folders.some((folder) => folder.name === targetUploadFolder)
     ? targetUploadFolder
     : folders[0]?.name || '';
 
   // TanStack Query: Fetch Documents (Strictly Zero Mock Data)
   const { data: serverDocs = [], isLoading, isFetching, isError, error } = useQuery({
-    queryKey: ['documents', selectedFolderFilter],
-    queryFn: () => {
-      const selectedFolder = folders.find((folder) => folder.name === selectedFolderFilter);
-      return documentApi.getDocuments(
-        selectedFolderFilter === 'All' ? 'All' : selectedFolder?.id || selectedFolderFilter
-      );
-    },
+    queryKey: ['documents', selectedFolder?.id || selectedFolderFilter],
+    queryFn: () => documentApi.getDocuments(selectedFolder?.id || 'All'),
+    enabled: selectedFolderFilter === 'All' || Boolean(selectedFolder),
     refetchOnWindowFocus: false,
     refetchInterval: (query) =>
       query.state.data?.some((document) =>
@@ -297,7 +315,10 @@ export default function DocumentsPage() {
   // Search & Filter Logic
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFolder = selectedFolderFilter === 'All' || doc.folder === selectedFolderFilter;
+    const matchesFolder =
+      selectedFolderFilter === 'All' ||
+      doc.folderId === selectedFolder?.id ||
+      doc.folder === selectedFolder?.name;
     const matchesStatus = selectedStatusFilter === 'All' || doc.status === selectedStatusFilter;
     return matchesSearch && matchesFolder && matchesStatus;
   });
@@ -472,7 +493,7 @@ export default function DocumentsPage() {
             >
               <option value="All">All Folders</option>
               {folders.map((folder) => (
-                <option key={folder.id || folder.name} value={folder.name}>
+                <option key={folder.id || folder.name} value={folder.id}>
                   {folder.name}
                 </option>
               ))}

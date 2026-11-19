@@ -365,7 +365,7 @@ export default function FoldersPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            navigate(`/documents?folder=${encodeURIComponent(folder.name)}`)
+                            navigate(`/documents?folder=${encodeURIComponent(folder.id)}`)
                           }
                           className="inline-flex items-center gap-1 text-xs font-semibold text-[#96613F] hover:text-[#4A3023] hover:bg-[#F3E8DC]/70 px-2 py-1 rounded-[6px] transition-colors cursor-pointer"
                           title={`View documents in ${folder.name}`}
@@ -447,7 +447,7 @@ export default function FoldersPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                navigate(`/documents?folder=${encodeURIComponent(folder.name)}`)
+                                navigate(`/documents?folder=${encodeURIComponent(folder.id)}`)
                               }
                               className="p-1.5 rounded-lg text-[#77716B] hover:text-[#96613F] hover:bg-[#F3E8DC] transition-colors cursor-pointer"
                               title="View Documents"
