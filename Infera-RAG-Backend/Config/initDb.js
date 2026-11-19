@@ -67,7 +67,11 @@ async function initDb() {
 
   for (const file of schemaFiles) {
     const sql = fs.readFileSync(path.join(__dirname, "..", "DB", file), "utf8");
-    await pool.query(sql);
+    try {
+      await pool.query(sql);
+    } catch (error) {
+      throw new Error(`Failed to apply RAG schema ${file}: ${error.message}`);
+    }
   }
 
   await verifyEmbeddingDimension();
