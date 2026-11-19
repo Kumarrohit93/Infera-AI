@@ -1,7 +1,7 @@
 
 const express = require("express");
 const authenticate = require("../middleware/authenticate");
-const { askQuestion, askQuestionStream } = require("../Controllers/rag.controller.js");
+const { askQuestion, askQuestionStream } = require("../controllers/rag.controller.js");
 
 const router = express.Router();
 
