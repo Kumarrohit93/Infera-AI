@@ -1,104 +1,142 @@
-# Infera AI — Project Progress
+# Infera AI — Project Progress Report
 
+**Updated:** 19 November 2026  
 **Team:** Titans  
-**Prepared / maintained by:** Documentation & QA  
-**Review date:** 16 November 2026  
-**Evidence cutoff:** Previously supplied member READMEs and team updates (latest compiled update: **6 November 2026**). **No new 16 November repository commits or teammate updates were available for verification.**
+**Repository:** https://github.com/Kumarrohit93/Infera-AI  
+**Overall project phase:** **Pre-deployment / mostly complete (team-reported)**  
+**Prepared by:** Documentation & QA
 
-## 1. Project snapshot
+> **Reporting note:** On 19 November 2026, the team reported that Infera AI is mostly complete and nearly ready to deploy. This is a high-level status update, **not** proof that each module has passed final testing. Earlier module details below come from team documentation and updates available before this date. The latest repository code, deployment, and QA evidence have not been independently reviewed for this report.
 
-Infera AI aims to let organizations upload and manage internal documents and let members ask questions over content they are authorized to read. Planned RAG-based answers should include relevant citations and avoid unsupported claims.
+## 1. Project summary
 
-**Overall status:** Active development. Multiple areas have been reported as started or implemented, but the complete user journey, integration tests, and production deployment have not been independently verified.
+Infera AI is an organizational document management and AI question-answering platform. It is designed for **Admins**, who manage organizational content and members, and **Members**, who can search permitted documents and receive RAG-based answers with supporting references.
 
-## 2. Team and progress
+**Current milestone:** Complete outstanding integration and verification work, then deploy the application.
 
-| Person | Responsibility | Last reported work | Evidence status / next check |
+## 2. Overall status by workstream
+
+| Workstream | Owner(s) | Latest supportable status | Remaining evidence / action |
 | --- | --- | --- | --- |
-| **Rohit Kumar** (team leader) | Coordination, integration, Docker, DB connection, RAG support | Reported merging branches, setting up PostgreSQL and Docker, collaborating on admin UI, coordinating chat/message schema and doing functional testing | **Reported, not independently verified**. Ask for merge history, Docker commands, tests and RAG demo |
-| **Sakshi** | Backend / authentication / database | Express/PostgreSQL backend; registration, login, current-user, invitation acceptance and creation APIs; schema files | **Reported implemented**. Run APIs and check database constraints, permissions and invitation expiry |
-| **Himanshu** | RAG development | Assigned to RAG in earlier workflow | **Needs current update**. Confirm own modules, model/retriever, integration, citations and tests |
-| **Jiya** | Admin frontend | React/Vite/Tailwind/Lucide/Framer Motion setup reported; Rohit reported coordination on UI | **Feature completion unclear**. Request page-by-page UI and API integration status |
-| **Khushi** | Member frontend | React/Vite project; Tailwind v4; login UI with email/password, visibility, remember-me, feedback states, responsive layout and animation | **Login UI reported**. Test current UI and whether it calls backend successfully |
-| **Sanjay Bhakhar** | Documentation / QA | Competitor research, overview/reporting, README/progress documentation preparation | **Documentation prepared**. QA execution results not yet supplied; add actual test evidence after running |
+| Overall application | Entire team | **Mostly complete; deployment approaching — reported 19 Nov** | Confirm release build and final feature list |
+| Project integration | Rohit | Earlier reported branch merges, integration and coordination | Verify current `main` branch and end-to-end flows |
+| Backend and database | Sakshi; Rohit supported database connectivity | Authentication APIs, SQL schemas, and PostgreSQL connection previously reported | Run current API and database tests |
+| Admin frontend | Jiya; Rohit supported UI coordination | React/Vite stack reported; later overall completion indicated but exact pages unconfirmed | List completed pages and check API integration |
+| Member frontend | Khushi | React/Vite setup and member login UI previously reported | Verify backend login integration and other member screens |
+| AI / RAG | Himanshu; Rohit contributed setup/implementation | RAG development/setup previously reported; overall project now near deployment | Demonstrate document-to-answer flow and citations |
+| Docker / environment | Rohit | Docker setup previously reported | Verify clean startup and deployment configuration |
+| Documentation | Sanjay | Competitor research and project documentation previously prepared; README/progress being updated | Review setup instructions against current source |
+| QA | Sanjay and module owners | Test planning documented; execution results were not provided in older updates | Record actual pass/fail evidence and close blockers |
+| Deployment | Team lead / integration team | **Pending / not confirmed live** | Confirm host, URL, date, and successful smoke test |
 
-## 3. Backend details from prior README
+## 3. Member contributions
 
-### Reported API endpoints
+### Rohit Kumar — Team lead and integration
 
-| Method | Endpoint | Expected behavior | Verification |
-| --- | --- | --- | --- |
-| POST | `/api/auth/register-organization` | Register organization/first admin | Pending |
-| POST | `/api/auth/login` | Authenticate user | Pending |
-| POST | `/api/auth/accept-invitation` | Accept invitation | Pending |
-| GET | `/api/auth/me` | Return logged-in user | Pending |
-| POST | `/api/users/invitations` | Admin creates invitation | Pending |
+Previously reported contributions:
+- Merged member branches into `main`.
+- Set up PostgreSQL connectivity.
+- Set up Docker.
+- Worked on RAG and coordinated RAG-related implementation.
+- Coordinated with Jiya on the frontend UI.
+- Coordinated database chat/message schema requirements with the backend team.
+- Reported functional testing.
 
-**Reported database scripts**: `db/schema.sql` (organizations/users/organization_members), `db/chat_schema.sql` (chats/messages), `db/invitations.sql` (invitations).
+**Current action:** Confirm deployment configuration, current integrated features, and any open critical bugs.
 
-**Invitations:** Prior README described one-time tokens with SHA-256 hashes and seven-day expiry. Email sending was not yet connected (link printed in terminal). Invitation listing/cancellation were pending. Verify behavior against code before saying it is complete.
+### Sakshi — Backend and database (`be/auth-db`)
 
-**Previously listed backend gaps:** rate limiting, CORS/Helmet configuration, invitation email sending, invitation management APIs, and independent end-to-end tests. Refresh tokens were described in the early design but **not planned in the newer backend README**.
+Previously documented work:
+- Backend using Node.js, Express, and PostgreSQL.
+- Schemas for organizations, users, memberships, chats, messages, and invitations.
+- Authentication and organization APIs for registration, login, invitation acceptance, and current-user retrieval.
+- Member invitation creation; earlier documentation noted email sending and invitation-list/cancel features were pending.
 
-## 4. Frontend details
+**Current action:** Confirm whether previously pending invitation/security items are now complete and share API test results.
 
-**Member UI (Khushi):** Initial login form and frontend setup reported; frontend-to-backend authentication status unknown. Planned dashboard, document explorer, AI chat, citations, and history need confirmation.
+### Himanshu — RAG (`be/rag` historically)
 
-**Admin UI (Jiya):** Stack and setup documented; no reliable feature-by-feature completion list was supplied. Do not label admin dashboard, folder/document management, user management, and settings as complete without a demonstration or code review.
+**Responsibility:** Document processing, retrieval, and AI-assisted answers. Earlier project documents described a planned pipeline covering text extraction, chunking, embeddings, retrieval, and citations.
 
-## 5. RAG, infrastructure, and integration
+**Current action:** Confirm actual model/vector storage, successful RAG demo, citation behavior, and deployment dependencies. Do not assume every design-stage technology is installed.
 
-| Area | Last known information | Status |
+### Jiya — Admin frontend (`fe/admin`)
+
+Previously documented React 18, Vite, Tailwind CSS, Lucide React, and Framer Motion; Rohit reported collaborating on UI decisions.
+
+**Current action:** Confirm completed admin pages, backend integration, responsive behavior, and admin-only access checks.
+
+### Khushi — Member frontend (`fe/member`)
+
+Previously documented React/Vite setup and an initial member login page with email/password fields, password visibility, remember-me UI, form feedback, and responsive styling.
+
+**Current action:** Confirm completed member dashboard, document access, AI chat/citations, and authentication integration.
+
+### Sanjay Bhakhar — Documentation and QA (`docs/qa`)
+
+Previously reported:
+- Competitor research on enterprise AI search/document question-answering products.
+- Project overview and documentation organization.
+- Team progress tracking.
+- QA test-case planning.
+
+**19 Nov documentation update:** README and progress tracker revised to reflect the team's report that the project is nearly deployment-ready. Details still awaiting verification are identified instead of being presented as completed.
+
+## 4. Earlier API reference (verify against current code)
+
+| Method | API | Purpose |
 | --- | --- | --- |
-| RAG setup | Rohit reported separate setup and implementation work | Reported; detailed pipeline unverified |
-| RAG module ownership | Earlier documents assign `be/rag` to Himanshu; later leader update credits Rohit with RAG work | Confirm responsibilities |
-| Chunking / embeddings / vector search | In early design only | Not verified |
-| Grounded answers / citations / no-answer fallback | Intended feature | Not verified |
-| PostgreSQL connection | Rohit reported setting it up | Reported; verify connection |
-| Docker | Rohit reported setup | Reported; verify compose/Dockerfile and successful run |
-| Branch integration | Rohit reported merging teammates' code | Reported; check commit/PR history |
-| CI/CD / hosted deployment | No confirmed update | Unknown |
+| POST | `/api/auth/register-organization` | Create organization/admin |
+| POST | `/api/auth/login` | User login |
+| POST | `/api/auth/accept-invitation` | Join via invitation |
+| GET | `/api/auth/me` | Current user details |
+| POST | `/api/users/invitations` | Invite a member |
 
-## 6. Documentation and QA
+The earlier backend README documented `db/schema.sql`, `db/chat_schema.sql`, and `db/invitations.sql`. API behavior, database schemas, and security must be checked against the final branch.
 
-**Documentation completed/reported:** Infera AI competitor research report, project overview material, and project progress reporting. Root README is being maintained as the project evolves.
+## 5. Final QA and deployment checklist
 
-**QA tests to prepare and run** (not claimed as passed):
+Mark an item complete **only after evidence is available** (test result, log, screenshot, PR, commit, or deployed URL).
 
-| Test ID | Scenario | Expected result | Actual result |
+| Check | Owner | Status | Evidence to record |
 | --- | --- | --- | --- |
-| AUTH-01 | Valid login | Login succeeds | Not tested / evidence not supplied |
-| AUTH-02 | Incorrect password | Login rejected | Not tested / evidence not supplied |
-| AUTH-03 | Missing/invalid JWT | Protected API denies access | Not tested / evidence not supplied |
-| INV-01 | Expired or reused invite | Invitation rejected | Not tested / evidence not supplied |
-| PERM-01 | Member requests another organization's documents | Access denied | Not tested / feature not confirmed |
-| RAG-01 | Ask question with known supporting document | Answer matches evidence and cites source | Not tested / feature not confirmed |
-| RAG-02 | Ask unsupported question | System avoids inventing an answer | Not tested / feature not confirmed |
+| Fresh checkout installs and starts | Integration team | To verify | Build/start logs |
+| PostgreSQL connects and migrations run | Backend / integration | To verify | Migration output |
+| Organization registration and login work | Backend + QA | To verify | API tests |
+| Admin/member authorization enforced | Backend + QA | To verify | Positive/negative tests |
+| Frontend works against live backend | Frontend + integration | To verify | Demo/test result |
+| Documents upload and process correctly | Backend / RAG | To verify | Sample document test |
+| RAG answers use the correct sources | RAG + QA | To verify | Questions, citations, expected answers |
+| Unsupported questions are handled safely | RAG + QA | To verify | No-answer test |
+| Secrets and environment settings are safe | Integration | To verify | Config review (no secret values) |
+| Docker/deployment configuration works | Integration | To verify | Container/build logs |
+| No critical or blocking bugs remain | Entire team | To verify | Bug tracker |
+| Application is publicly or privately reachable | Integration | **Not confirmed** | URL + deployment date |
+| Post-deployment smoke test passes | QA / integration | Pending deployment | Test result |
 
-## 7. Pending confirmations from team
+## 6. Open items to confirm with the team
 
-1. **Rohit:** Which branches/PRs were merged after 6 November? What works end to end today? What commands run Docker?
-2. **Sakshi:** Which routes pass Postman tests? Is email invitation delivery live? Are permissions and validation enforced?
-3. **Himanshu and Rohit:** What is actually implemented in RAG? Which LLM/embeddings/vector storage are used? Are source citations working?
-4. **Jiya:** Which admin pages are built and connected to APIs?
-5. **Khushi:** Is the login UI connected to the backend? Are dashboard/chat/history pages ready?
-6. **QA:** Record executed test cases, their dates, pass/fail results, and issue IDs. Never mark tests passed without evidence.
+1. What exact pages and workflows are complete in the admin and member frontends?
+2. Are frontends integrated with the latest backend APIs?
+3. Which RAG models, embedding service, and vector store does the application actually use?
+4. Are file upload, document permissions, citations, and chat history functional?
+5. Are invitation email delivery, rate limiting, and CORS/Helmet configuration finished?
+6. What are the exact local setup commands and required environment-variable **names**?
+7. Which deployment service is being used, and when will a working URL be available?
+8. Which QA tests have been executed, and what were the results?
 
-## 8. Change log
+## 7. Change log
 
-| Date | Update | Evidence |
-| --- | --- | --- |
-| 4 Nov 2026 | Initial system design drafted | System Design v0.1; mostly planned architecture |
-| 6 Nov 2026 | Progress collected from available member READMEs and later team-leader update | Earlier project progress report |
-| 16 Nov 2026 | Documentation refreshed: clarified reported versus verified statuses, consolidated existing information, added QA matrix and follow-up questions | **Documentation-only update; no new team-member code changes independently verified** |
+| Date | Update |
+| --- | --- |
+| 4 Nov 2026 | System Design v0.1 described the intended architecture and early backend setup. |
+| 6 Nov 2026 | Initial progress tracking compiled from member README updates and team leader contributions. |
+| **19 Nov 2026** | **Overall project status revised to “mostly complete / pre-deployment” following team report.** Previous implementation notes retained; release checks added. No unverified individual features marked as tested or deployed. |
 
-## 9. Status legend
+---
 
-- **Verified complete:** Code was inspected and the feature passed recorded tests.
-- **Reported implemented:** Team member or README says it was built, but it has not been independently verified here.
-- **In progress:** Work started but not completed.
-- **Planned:** Design requirement, with no evidence of completion.
-- **Unknown / needs confirmation:** Incomplete, stale, or conflicting evidence.
-
-> **Documentation rule:** A design diagram, installed package, Git branch, or screenshot does not by itself prove a feature works. Update the status only after checking current code, a team-owner report, and preferably a repeatable test.
-
+**Status labels used:**
+- **Reported:** A team member has said the work is done, but no independent test is recorded here.
+- **Verified:** A test or code review has confirmed the work, with evidence recorded.
+- **To verify:** The feature or its current state has not yet been confirmed.
+- **Pending deployment:** Release has not been confirmed live.
