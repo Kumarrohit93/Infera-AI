@@ -1,274 +1,315 @@
-import { useEffect, useState } from "react";
-import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { getStoredUser } from "../services/authService";
+import { useEffect, useRef, useState } from "react";
+import { History, MessageSquarePlus, PanelRightClose, Send, X } from "lucide-react";
 import { documentService } from "../services/documentService";
-import MarkdownMessage from "../components/MarkdownMessage";
 
 export default function AIChat() {
-  const memberName = getStoredUser()?.name || "there";
-  const location = useLocation();
-  const requestedConversationId = location.state?.conversationId || null;
-  const [messages, setMessages] = useState(() =>
-    requestedConversationId
-      ? []
-      : [
-          {
-            id: "welcome",
-            sender: "ai",
-            text: `Hello ${memberName}! I am Infera AI. Ask me anything from your organisation's permitted documents.`,
-          },
-        ]
-  );
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      sender: "ai",
+      text: "Hello Vibha! I am Infera AI. Ask me anything from your organisation's permitted documents.",
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(
-    requestedConversationId
-  );
-  const [loadedHistoryId, setLoadedHistoryId] = useState(null);
-  const isLoadingHistory =
-    Boolean(requestedConversationId) &&
-    loadedHistoryId !== requestedConversationId;
+
+  // Embedded Chat History panel state (empty by default, no dummy data)
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [error, setError] = useState(null);
+
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (!requestedConversationId) return undefined;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
-    let active = true;
-    documentService
-      .getConversationMessages(requestedConversationId)
-      .then((history) => {
-        if (!active) return;
-        setMessages(
-          history.map((message) => ({
-            id: message.id,
-            sender: message.role === "user" ? "user" : "ai",
-            text: message.content,
-            sources: message.sources || [],
-            feedback: message.feedback || null,
-            persisted: message.role === "assistant",
-          }))
-        );
-      })
-      .catch((error) => {
-        if (active) {
-          setMessages([
-            {
-              id: `history-error-${Date.now()}`,
-              sender: "ai",
-              text: `Could not load this conversation: ${error.message}`,
-            },
-          ]);
-        }
-      })
-      .finally(() => {
-        if (active) setLoadedHistoryId(requestedConversationId);
-      });
+  const getBotResponse = (userMsg) => {
+    const cleanMsg = userMsg.trim().toLowerCase();
+    const greetings = ["hi", "hii", "hiii", "hello", "hey", "good morning", "good afternoon"];
 
-    return () => {
-      active = false;
-    };
-  }, [requestedConversationId]);
+    if (greetings.includes(cleanMsg)) {
+      return "Hello Vibha! 👋 How can I help you explore your workspace documents today?";
+    }
+    if (cleanMsg.includes("how are you")) {
+      return "I'm operating at peak performance! What document or topic would you like to search today?";
+    }
+    return `Based on your permitted workspace documents, here is the relevant analysis regarding "${userMsg}". (Connect backend RAG API for live database retrieval.)`;
+  };
 
-  const handleSend = async (event) => {
-    event.preventDefault();
+  const loadConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      const list = await documentService.getConversations();
+      setConversations(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Error loading conversations:", err);
+      // Non-blocking error for conversation list
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
 
-    const userText = input.trim();
-    if (!userText || isLoading) return;
+  const handleToggleHistory = () => {
+    const nextState = !historyOpen;
+    setHistoryOpen(nextState);
+    if (nextState && conversations.length === 0) {
+      loadConversations();
+    }
+  };
 
-    setMessages((prev) => [
-      ...prev,
-      { id: `user-${Date.now()}`, sender: "user", text: userText },
-    ]);
-    setInput("");
-    setIsLoading(true);
-    const assistantId = `assistant-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
+  const handleNewChat = () => {
+    setActiveConversationId(null);
+    setError(null);
+    setMessages([
       {
-        id: assistantId,
+        id: Date.now(),
         sender: "ai",
-        text: "",
-        sources: [],
-        persisted: false,
+        text: "Hello Vibha! I am Infera AI. Ask me anything from your organisation's permitted documents.",
       },
     ]);
+    setHistoryOpen(false);
+  };
+
+  // Select a Conversation: Load its persistent messages and citations
+  const handleSelectConversation = async (convId) => {
+    if (convId === activeConversationId || isLoading) return;
+    setActiveConversationId(convId);
+    setError(null);
+    setHistoryOpen(false);
 
     try {
-      const response = await documentService.askQuestionStream({
-        question: userText,
-        conversationId,
-        onEvent(eventName, data) {
-          if (eventName === "start") setConversationId(data.conversationId);
-          if (eventName === "sources") {
-            setMessages((current) => current.map((message) =>
-              message.id === assistantId
-                ? { ...message, sources: data.sources || [] }
-                : message
-            ));
-          }
-          if (eventName === "token") {
-            setMessages((current) => current.map((message) =>
-              message.id === assistantId
-                ? { ...message, text: message.text + data.token }
-                : message
-            ));
-          }
-          if (eventName === "done") {
-            setConversationId(data.conversationId);
-            setMessages((current) => current.map((message) =>
-              message.id === assistantId
-                ? {
-                    ...message,
-                    text: data.answer,
-                    sources: data.sources || [],
-                    messageId: data.messageId,
-                    persisted: true,
-                  }
-                : message
-            ));
-          }
-        },
-      });
-      setConversationId(response.conversationId);
-    } catch (error) {
-      setMessages((current) => current.map((message) =>
-        message.id === assistantId
-          ? {
-              ...message,
-              text: `I couldn't retrieve an answer: ${error.message}`,
-            }
-          : message
-      ));
+      setIsLoading(true);
+      const historyMessages = await documentService.getConversationMessages(convId);
+      setMessages(Array.isArray(historyMessages) ? historyMessages : []);
+    } catch (err) {
+      console.error("Error loading messages:", err);
+      setError("Failed to load conversation messages from database.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleFeedback = async (messageId, helpful) => {
-    try {
-      await documentService.submitFeedback(messageId, { helpful });
-      setMessages((current) => current.map((message) =>
-        message.id === messageId
-          ? { ...message, feedback: helpful ? "Helpful" : "Not Helpful" }
-          : message
-      ));
-    } catch (error) {
-      setMessages((current) => [
-        ...current,
-        { id: `feedback-error-${Date.now()}`, sender: "ai", text: error.message },
-      ]);
-    }
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userText = input.trim();
+    setError(null);
+    setMessages((prev) => [...prev, { id: Date.now(), sender: "user", text: userText }]);
+    setInput("");
+    setIsLoading(true);
+
+    // Smooth AI response transition
+    setTimeout(() => {
+      const reply = getBotResponse(userText);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, sender: "ai", text: reply }]);
+      setIsLoading(false);
+    }, 900);
   };
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] flex-col bg-[#F8F4E7] rounded-3xl border border-[#D7A781]/30 p-4 md:p-6 shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#D7A781]/30 pb-4 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-[#D7A781] p-1 shadow-sm">
-            <img src="/infera-logo.jpeg" alt="Infera AI" className="h-full w-full object-contain rounded-lg" />
+    <div className="relative flex h-[calc(100vh-6rem)] overflow-hidden rounded-3xl border border-[#D7A781]/30 bg-[#F8F4E7] shadow-sm">
+      {/* MAIN CHAT PANEL */}
+      <div className="flex min-w-0 flex-1 flex-col p-4 md:p-6">
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between gap-3 border-b border-[#D7A781]/30 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1 shadow-sm">
+              <img
+                src="/infera-logo.jpeg"
+                alt="Infera AI"
+                className="h-full w-full rounded-lg object-contain"
+              />
+            </div>
+            <div>
+              <h2 className="font-bold text-[#722F37]">Infera Knowledge Assistant</h2>
+              <p className="text-xs text-gray-500">RAG Engine • Secure Document Chat</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-bold text-[#722F37]">Infera Knowledge Assistant</h2>
-            <p className="text-xs text-gray-500">RAG Engine • Secure Document Chat</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-        {isLoadingHistory && (
-          <p className="text-center text-sm text-gray-500">Loading conversation...</p>
-        )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-            {msg.sender === "ai" && (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1 shadow-sm">
-                <img src="/infera-logo.jpeg" alt="Infera" className="h-full w-full object-contain rounded-lg" />
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex items-center gap-1.5 rounded-xl border border-[#D7A781]/60 bg-white px-3 py-2 text-xs font-semibold text-[#722F37] transition hover:bg-[#D7A781]/20"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              <span className="hidden sm:inline">New Chat</span>
+            </button>
 
-            <div
-              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
-                msg.sender === "user"
-                  ? "bg-[#722F37] text-white"
-                  : "bg-white text-[#722F37] border border-[#D7A781]/40"
+            <button
+              type="button"
+              onClick={handleToggleHistory}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                historyOpen
+                  ? "border-[#722F37] bg-[#722F37] text-white"
+                  : "border-[#D7A781]/60 bg-white text-[#722F37] hover:bg-[#D7A781]/20"
               }`}
             >
-              {msg.sender === "user" ? (
-                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-              ) : (
-                <MarkdownMessage content={msg.text} />
-              )}
-              {msg.sources?.length > 0 && (
-                <ul className="mt-2 list-inside list-disc border-t border-[#D7A781]/30 pt-2 text-xs">
-                  {msg.sources.map((source) => (
-                    <li key={`${msg.id}-${source.sourceId}`}>
-                      {source.documentName}
-                      {source.pageNumber ? ` · page ${source.pageNumber}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {msg.sender === "ai" && msg.persisted && (
-                <div className="mt-2 flex items-center gap-2 border-t border-[#D7A781]/30 pt-2">
-                  <button
-                    type="button"
-                    aria-label="Rate answer helpful"
-                    title="Helpful"
-                    onClick={() => handleFeedback(msg.messageId || msg.id, true)}
-                    className={`rounded p-1 ${msg.feedback === "Helpful" ? "bg-green-100 text-green-800" : "text-gray-500 hover:bg-gray-100"}`}
-                  >
-                    <ThumbsUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Rate answer not helpful"
-                    title="Not helpful"
-                    onClick={() => handleFeedback(msg.messageId || msg.id, false)}
-                    className={`rounded p-1 ${msg.feedback === "Not Helpful" ? "bg-red-100 text-red-800" : "text-gray-500 hover:bg-gray-100"}`}
-                  >
-                    <ThumbsDown className="h-4 w-4" />
-                  </button>
-                  {msg.feedback && <span className="text-xs text-gray-500">Thanks for your feedback</span>}
-                </div>
-              )}
-            </div>
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">History</span>
+            </button>
           </div>
-        ))}
+        </div>
 
-        {isLoading && (
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1">
-              <img src="/infera-logo.jpeg" alt="Infera" className="h-full w-full object-contain rounded-lg" />
-            </div>
-            <div className="flex items-center gap-1.5 rounded-2xl bg-white px-4 py-3.5 border border-[#D7A781]/40 shadow-sm">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-[#722F37] [animation-delay:-0.3s]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-[#722F37] [animation-delay:-0.15s]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-[#722F37]" />
-            </div>
+        {/* Error Banner (if any) */}
+        {error && (
+          <div className="mb-3 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium text-red-700 transition-opacity duration-200">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="ml-3 text-red-500 hover:text-red-800"
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
+
+        {/* Messages Area */}
+        <div className="flex-1 space-y-4 overflow-y-auto pr-2 scroll-smooth">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex items-start gap-3 transition-all duration-300 ease-out ${
+                msg.sender === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {msg.sender === "ai" && (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1 shadow-sm">
+                  <img
+                    src="/infera-logo.jpeg"
+                    alt="Infera"
+                    className="h-full w-full rounded-lg object-contain"
+                  />
+                </div>
+              )}
+
+              <div
+                className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                  msg.sender === "user"
+                    ? "bg-[#722F37] text-white"
+                    : "border border-[#D7A781]/40 bg-white text-[#722F37]"
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+
+          {/* Smooth Loading Phase */}
+          {isLoading && (
+            <div className="flex items-center gap-3 opacity-95 transition-opacity duration-300 ease-in-out">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7A781] bg-white p-1 shadow-sm">
+                <img
+                  src="/infera-logo.jpeg"
+                  alt="Infera"
+                  className="h-full w-full rounded-lg object-contain"
+                />
+              </div>
+              <div className="flex items-center gap-2.5 rounded-2xl border border-[#D7A781]/40 bg-white px-4 py-3 shadow-sm">
+                <span className="text-xs font-medium text-[#722F37]/75">Thinking</span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#722F37]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D7A781] [animation-delay:150ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#722F37] [animation-delay:300ms]" />
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Box */}
+        <form
+          onSubmit={handleSend}
+          className="mt-4 flex items-center gap-3 border-t border-[#D7A781]/30 pt-3"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={isLoading}
+            placeholder="Ask a question or say hello (e.g., 'Hi Infera')..."
+            className="h-12 flex-1 rounded-xl border-2 border-[#D7A781]/50 bg-white px-4 text-sm text-[#722F37] outline-none transition focus:border-[#722F37] disabled:opacity-60"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="flex h-12 items-center gap-2 rounded-xl bg-[#722F37] px-5 sm:px-6 font-semibold text-white shadow-md transition hover:bg-[#5B242C] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span>Send</span>
+            <Send className="h-4 w-4" />
+          </button>
+        </form>
       </div>
 
-      <form onSubmit={handleSend} className="mt-4 flex items-center gap-3 pt-2 border-t border-[#D7A781]/30">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={isLoading || isLoadingHistory}
-          placeholder="Ask a question or say hello (e.g., 'Hi Infera')..."
-          className="h-12 flex-1 rounded-xl border-2 border-[#D7A781]/50 bg-white px-4 text-sm text-[#722F37] outline-none focus:border-[#722F37]"
-        />
-        <button
-          type="submit"
-          disabled={isLoading || isLoadingHistory || !input.trim()}
-          className="flex h-12 items-center gap-2 rounded-xl bg-[#722F37] px-6 font-semibold text-white hover:bg-[#5B242C] transition shadow-md"
-        >
-          <span>Send</span>
-          <Send className="h-4 w-4" />
-        </button>
-      </form>
+      {/* EMBEDDED CHAT HISTORY SIDEBAR / DRAWER */}
+      <aside
+        className={`flex flex-col border-l border-[#D7A781]/30 bg-white/95 transition-all duration-300 ease-in-out ${
+          historyOpen ? "w-72 sm:w-80 opacity-100" : "w-0 overflow-hidden border-l-0 opacity-0"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-[#D7A781]/30 px-4 py-4">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-[#722F37]" />
+            <h3 className="text-sm font-bold text-[#722F37]">Chat History</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(false)}
+            className="rounded-lg p-1 text-gray-500 transition hover:bg-[#F8F4E7] hover:text-[#722F37]"
+            aria-label="Close history"
+          >
+            <PanelRightClose className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3">
+          {isLoadingConversations ? (
+            <div className="space-y-2.5 py-2">
+              <div className="h-11 animate-pulse rounded-xl bg-[#F8F4E7]" />
+              <div className="h-11 animate-pulse rounded-xl bg-[#F8F4E7]" />
+              <div className="h-11 animate-pulse rounded-xl bg-[#F8F4E7]" />
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+              <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#722F37]/10 text-[#722F37]">
+                <History className="h-5 w-5" />
+              </div>
+              <p className="text-xs font-semibold text-[#722F37]">No Past Chats Yet</p>
+              <p className="mt-1 text-[11px] text-gray-500">
+                Your saved conversations will appear here once available.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {conversations.map((conv) => {
+                const isActive = conv.id === activeConversationId;
+                return (
+                  <button
+                    key={conv.id}
+                    type="button"
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className={`w-full rounded-xl px-3.5 py-2.5 text-left text-xs transition ${
+                      isActive
+                        ? "bg-[#722F37] font-semibold text-white shadow-sm"
+                        : "text-[#722F37] hover:bg-[#F8F4E7]"
+                    }`}
+                  >
+                    <p className="truncate">{conv.title || "Untitled Chat"}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

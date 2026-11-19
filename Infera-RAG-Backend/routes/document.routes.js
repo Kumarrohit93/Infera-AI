@@ -9,7 +9,7 @@ const {
   listDocumentVersions,
   listDocuments,
   deleteDocument,
-} = require("../Controllers/document.controller");
+} = require("../controllers/document.controller");
 
 const router = express.Router();
 

@@ -6,7 +6,7 @@ const {
   listFolders,
   updateFolder,
   deleteFolder,
-} = require("../Controllers/folder.controller")
+} = require("../controllers/folder.controller")
 
 const router = express.Router()
 

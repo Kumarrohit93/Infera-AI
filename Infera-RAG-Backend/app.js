@@ -8,15 +8,18 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const pool = require("./Config/db");
 const { initDb } = require("./Config/initDb");
 const { waitForIngestionQueue, closeIngestionQueue } = require("./Services/ingestionQueue");
-const documentRoutes = require("./Routes/document.routes");
-const folderRoutes = require("./Routes/folder.routes");
-const ragRoutes = require("./Routes/rag.routes");
-const conversationRoutes = require("./Routes/conversation.routes");
-const feedbackRoutes = require("./Routes/feedback.routes");
+const documentRoutes = require("./routes/document.routes");
+const folderRoutes = require("./routes/folder.routes");
+const ragRoutes = require("./routes/rag.routes");
+const conversationRoutes = require("./routes/conversation.routes");
+const feedbackRoutes = require("./routes/feedback.routes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 let server;
+let startupPromise;
+let shutdownPromise;
+let shutdownRequested = false;
 app.set("trust proxy", 1);
 app.use(helmet());
 
@@ -99,7 +102,9 @@ app.use(errorHandler);
 
 async function startServer() {
     await initDb();
+    if (shutdownRequested) return;
     await waitForIngestionQueue();
+    if (shutdownRequested) return;
 
     const port = process.env.PORT || 7000;
     server = app.listen(port, () => {
@@ -107,21 +112,44 @@ async function startServer() {
     });
 }
 
-startServer().catch(async (error) => {
-    console.error("[Startup] RAG backend initialization failed:", error.message);
-    await pool.end();
-    process.exitCode = 1;
-});
-
 async function shutdown() {
-    if (server) {
-        await new Promise((resolve, reject) => {
-            server.close((error) => (error ? reject(error) : resolve()));
-        });
-    }
-    await closeIngestionQueue();
-    await pool.end();
+    shutdownRequested = true;
+    if (shutdownPromise) return shutdownPromise;
+
+    shutdownPromise = (async () => {
+        if (startupPromise) await startupPromise.catch(() => {});
+        if (server) {
+            await new Promise((resolve, reject) => {
+                server.close((error) => (error ? reject(error) : resolve()));
+            });
+        }
+        await closeIngestionQueue();
+        await pool.end();
+    })();
+
+    return shutdownPromise;
 }
 
-process.once("SIGTERM", shutdown);
-process.once("SIGINT", shutdown);
+startupPromise = startServer();
+startupPromise.catch(async (error) => {
+    console.error("[Startup] RAG backend initialization failed:");
+    console.error(error.stack || error);
+
+    process.exitCode = 1;
+
+    try {
+        await shutdown();
+    } catch (shutdownError) {
+        console.error("[Shutdown] RAG backend cleanup failed:", shutdownError.stack || shutdownError);
+    }
+});
+
+function handleShutdownSignal() {
+    shutdown().catch((error) => {
+        console.error("[Shutdown] RAG backend cleanup failed:", error.stack || error);
+        process.exitCode = 1;
+    });
+}
+
+process.once("SIGTERM", handleShutdownSignal);
+process.once("SIGINT", handleShutdownSignal);
