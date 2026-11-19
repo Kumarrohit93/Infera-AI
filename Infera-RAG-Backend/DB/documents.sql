@@ -9,8 +9,7 @@ CREATE TABLE IF NOT EXISTS documents (
     mime_type VARCHAR(150) NOT NULL,
     file_size_bytes BIGINT NOT NULL CHECK (file_size_bytes >= 0),
     checksum_sha256 CHAR(64),
-    status VARCHAR(12) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'processing', 'ready', 'failed', 'archived')),
+    status VARCHAR(12) NOT NULL DEFAULT 'pending',
     processing_error TEXT,
     uploaded_by UUID,
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -28,8 +27,44 @@ CREATE TABLE IF NOT EXISTS documents (
     CONSTRAINT fk_documents_uploader_same_org
         FOREIGN KEY (organization_id, uploaded_by)
         REFERENCES organization_members(organization_id, user_id)
-        ON DELETE SET NULL (uploaded_by)
+        ON DELETE SET NULL (uploaded_by),
+
+    CONSTRAINT documents_status_check
+        CHECK (status IN ('pending', 'queued', 'processing', 'ready', 'failed', 'archived'))
 );
+
+DO $$
+DECLARE
+    status_constraint RECORD;
+BEGIN
+    FOR status_constraint IN
+        SELECT conname, pg_get_constraintdef(oid) AS definition
+        FROM pg_constraint
+        WHERE conrelid = 'documents'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%status%'
+    LOOP
+        IF status_constraint.definition NOT ILIKE '%queued%' THEN
+            EXECUTE format(
+                'ALTER TABLE documents DROP CONSTRAINT %I',
+                status_constraint.conname
+            );
+        END IF;
+    END LOOP;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = 'documents'::regclass
+          AND conname = 'documents_status_check'
+          AND pg_get_constraintdef(oid) ILIKE '%queued%'
+    ) THEN
+        ALTER TABLE documents
+            ADD CONSTRAINT documents_status_check
+            CHECK (status IN ('pending', 'queued', 'processing', 'ready', 'failed', 'archived'));
+    END IF;
+END
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_documents_org_status
     ON documents(organization_id, status);
