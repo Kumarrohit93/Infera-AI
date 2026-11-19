@@ -20,9 +20,14 @@ const connection = new IORedis(process.env.REDIS_URL, {
   enableReadyCheck: true,
 });
 let worker;
+let startupPromise;
+let shutdownPromise;
+let shutdownRequested = false;
 
 async function startWorker() {
   await initDb();
+  if (shutdownRequested) return;
+
   worker = new Worker(
     QUEUE_NAME,
     async (job) => {
@@ -56,17 +61,36 @@ async function startWorker() {
 }
 
 async function shutdown() {
-  if (worker) await worker.close();
-  await connection.quit();
-  await pool.end();
+  shutdownRequested = true;
+  if (shutdownPromise) return shutdownPromise;
+
+  shutdownPromise = (async () => {
+    if (startupPromise) await startupPromise.catch(() => {});
+    if (worker) await worker.close();
+    await connection.quit();
+    await pool.end();
+  })();
+
+  return shutdownPromise;
 }
 
-process.once("SIGTERM", shutdown);
-process.once("SIGINT", shutdown);
+function handleShutdownSignal() {
+  shutdown().catch((error) => {
+    console.error("[Ingestion] Worker cleanup failed:", error.message);
+    process.exitCode = 1;
+  });
+}
 
-startWorker().catch(async (error) => {
+process.once("SIGTERM", handleShutdownSignal);
+process.once("SIGINT", handleShutdownSignal);
+
+startupPromise = startWorker();
+startupPromise.catch(async (error) => {
   console.error("[Ingestion] Worker initialization failed:", error.message);
-  await connection.quit();
-  await pool.end();
   process.exitCode = 1;
+  try {
+    await shutdown();
+  } catch (shutdownError) {
+    console.error("[Ingestion] Worker cleanup failed:", shutdownError.message);
+  }
 });
