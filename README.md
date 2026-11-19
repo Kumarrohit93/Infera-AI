@@ -1,146 +1,161 @@
 # Infera AI
 
-**Enterprise Knowledge Base and AI Document Question Answering**  
+**AI-powered organizational knowledge management and document question answering**
+
+**Project status:** Pre-deployment — the team reports that the project is mostly complete. Final integration, QA, security, and deployment checks are being confirmed.  
 **Team:** Titans  
-**Repository:** https://github.com/Kumarrohit93/Infera-AI  
-**Documentation review:** 16 November 2026  
-**Project status:** In development; the latest repository state has not been independently verified for this update.
+**Repository:** https://github.com/Kumarrohit93/Infera-AI
 
-## 1. About the project
+## Overview
 
-Infera AI is a team project to help organizations organize internal documents and let authorized employees ask questions about them. The intended system uses **Retrieval-Augmented Generation (RAG)**: retrieve relevant passages from permitted documents, provide those passages to an AI model, and return a document-grounded answer with citations where supported.
+Infera AI is an enterprise knowledge-base project that helps organizations organize internal documents and find information using natural-language questions. Its intended workflow combines document management, role-based access, and Retrieval-Augmented Generation (RAG) so employees can receive answers grounded in the documents they are authorized to access.
 
-**Example:** A member asks, “What is our company's leave policy?” The intended system searches the organization's approved HR documents and answers using the relevant policy text instead of guessing.
+**Example:** Instead of manually searching a long HR policy, a member can ask, “How many casual leaves are available?” The AI workflow is designed to retrieve relevant policy sections and respond with supporting sources.
 
-## 2. User roles and planned capabilities
+## Users and capabilities
 
-| Role | Intended capabilities |
+| Role | Main capabilities |
 | --- | --- |
-| **Admin** | Manage organization information, members, folders, documents, and permissions. |
-| **Member** | Access permitted documents, ask questions through AI chat, and view sources/chat history. |
+| **Admin** | Manage organizational members, documents, folders, and permissions; monitor organization activity. |
+| **Member** | Sign in, access permitted content, ask questions about documents, and review AI answers and citations. |
 
-**Important:** These describe the intended product. They do not mean that every screen, integration, or security rule is complete.
+The full feature list above describes the project's **intended scope**. Individual feature readiness should be checked against the current application and tracked in `Infera_AI_Project_Progress_Updated.md`.
 
-## 3. Technology stack
+## Technology stack
 
-| Area | Reported / designed technologies |
+| Area | Technologies documented by the team |
 | --- | --- |
-| Admin and member frontends | React, Vite, Tailwind CSS, Lucide React, Framer Motion |
-| Backend | Node.js, Express |
-| Database | PostgreSQL and the `pg` Node.js driver |
-| Authentication and validation | JWT, `bcryptjs`, Zod (reported by backend documentation) |
-| AI | RAG; specific model, embedding service, and live integration **not yet confirmed** |
-| Deployment setup | Docker setup reported by team leader; exact run instructions **not yet confirmed** |
-| Planned infrastructure from early system design | `pgvector`, Redis/BullMQ, object storage, OpenAI APIs — **do not assume implemented** |
+| Admin and member frontends | React, Vite, JavaScript, Tailwind CSS |
+| UI elements | Lucide React, Framer Motion |
+| Backend | Node.js, Express.js |
+| Database | PostgreSQL (`pg`) |
+| Authentication and validation | JSON Web Tokens (`jsonwebtoken`), `bcryptjs`, Zod |
+| Other backend dependencies | `dotenv`, `cors`, `helmet`, `multer` |
+| AI approach | Retrieval-Augmented Generation (RAG) |
+| Containerization | Docker setup reported by the team lead |
+| Collaboration | Git and GitHub |
 
-## 4. Conceptual architecture
+The original design also proposed **pgvector, Redis/BullMQ, object storage, and an LLM API**. Verify which of those are present in the latest working build before listing them as implemented dependencies.
+
+## High-level architecture
 
 ```text
-Admin Frontend (React) ----\
-                            >---- Express API ---- PostgreSQL
-Member Frontend (React) ---/          |
-                                     +---- RAG / document-answering component
+Admin frontend          Member frontend
+      \                     /
+       \                   /
+           Express API
+           /        \
+    PostgreSQL    RAG / document-processing component
+                       |
+                  AI answer + source references
 ```
 
-Planned RAG sequence: **Upload → extract text → split into chunks → create embeddings/index → retrieve authorized passages → generate a grounded answer → show citations.** The exact pipeline and its working status still require code and test verification.
+1. A user signs in through the frontend.
+2. The backend handles authentication and access checks.
+3. Admins manage content and members; members use permitted content.
+4. For document questions, the RAG component is designed to retrieve relevant passages and use them to produce grounded answers.
+5. The frontend displays the response, including sources when supported.
 
-## 5. Backend setup (based on prior backend README)
+## Getting started (local development)
 
-**Prerequisites:** Git, Node.js/npm, PostgreSQL.
+**Prerequisites:** Git, Node.js with npm, and PostgreSQL. Some services may require additional configuration.
 
 ```bash
 git clone https://github.com/Kumarrohit93/Infera-AI.git
 cd Infera-AI
 ```
 
-Locate the backend folder containing `app.js` and `package.json` (previous design names it `Infera-Backend/`), then run:
+### Backend
+
+The earlier backend documentation uses `Infera-Backend` and an `app.js` entry point:
 
 ```bash
+cd Infera-Backend
 npm install
 ```
 
-The backend README listed these packages:
+Create a local `.env` file using the variable names actually referenced by the current source code. Configure the PostgreSQL connection, JWT secret, application port, and any required AI service credentials. **Never commit `.env` or API keys.**
 
-```bash
-npm install express pg dotenv cors helmet jsonwebtoken bcryptjs zod multer
+The previously documented database setup files were:
+
+```text
+db/schema.sql
+db/chat_schema.sql
+db/invitations.sql
 ```
 
-Set up PostgreSQL and run the database scripts, **if present in your current checkout**, in the documented order:
-
-1. `db/schema.sql` — organizations, users, organization members
-2. `db/chat_schema.sql` — chats and messages
-3. `db/invitations.sql` — invitation records
-
-Create a local `.env` file using the environment-variable names expected by the checked-out code. **Never commit credentials or `.env`.** The previous backend documentation identifies the entry command as:
+Run the SQL migrations/schema scripts required by your **current** backend version. Then, if `app.js` is still the entry point:
 
 ```bash
 node app.js
 ```
 
-The correct database connection settings, server port, scripts, and paths must be checked against the current backend files.
+### Frontends
 
-## 6. Frontend setup
-
-Open each frontend application directory and inspect its `package.json` scripts. The frontends are built with React/Vite; a common Vite workflow is:
+The earlier team updates describe separate React/Vite admin and member frontends. In each frontend directory containing a `package.json`, run:
 
 ```bash
 npm install
-npm run dev
 ```
 
-The older admin frontend README used a different start command. Use the **actual script from that application's `package.json`** rather than assuming both applications start identically.
+Then use the command listed in that application's `package.json` under `scripts` (often `npm run dev` for Vite). **Check the actual directory names and scripts in the current repository** before executing these instructions.
 
-## 7. Documented backend endpoints
+### Docker
 
-These endpoints were **reported in the backend README**, not independently retested for this documentation update.
+A Docker setup has been reported. Use the current Docker or Compose configuration supplied by the team lead; the exact service names and commands have not been confirmed in this document.
 
-| Method | Route | Purpose |
+## Previously documented backend endpoints
+
+These endpoints appeared in the backend team's earlier update. Confirm they still match the current implementation.
+
+| Method | Endpoint | Purpose |
 | --- | --- | --- |
 | POST | `/api/auth/register-organization` | Register an organization and initial admin |
-| POST | `/api/auth/login` | Log in |
-| POST | `/api/auth/accept-invitation` | Accept an organization invitation |
-| GET | `/api/auth/me` | Read current authenticated user |
-| POST | `/api/users/invitations` | Create an invitation (admin) |
+| POST | `/api/auth/login` | Authenticate a user |
+| POST | `/api/auth/accept-invitation` | Accept a member invitation |
+| GET | `/api/auth/me` | Get current authenticated user information |
+| POST | `/api/users/invitations` | Create a member invitation (admin) |
 
-The reported database tables include `organizations`, `users`, `organization_members`, `invitations`, `chats`, and `messages`.
+Earlier database tables included `organizations`, `users`, `organization_members`, `invitations`, `chats`, and `messages`. Other tables for documents, permissions, citations, and processing were specified in the system design; check current migrations for actual coverage.
 
-## 8. Team responsibilities
+## Development team
 
-| Member | Area |
+| Member | Responsibility |
 | --- | --- |
-| **Rohit Kumar** | Team lead; integration, PostgreSQL connection, Docker setup, UI coordination, and RAG work (reported) |
-| **Sakshi** | Backend, database schemas, authentication and invitations |
-| **Himanshu** | RAG development (individual implementation details need confirmation) |
+| **Rohit Kumar** | Team lead, integration, database connectivity, Docker setup, and RAG development support |
+| **Sakshi** | Backend, authentication APIs, and database schemas |
+| **Himanshu** | RAG development |
 | **Jiya** | Admin frontend |
 | **Khushi** | Member frontend |
-| **Sanjay Bhakhar** | Documentation, competitor research, progress reporting and QA preparation |
+| **Sanjay Bhakhar** | Documentation, competitor research, progress tracking, and QA preparation |
 
-**Documentation correction:** Early design files identify a different team leader. The table above follows the later team update that identifies **Rohit Kumar** as leader. Exact RAG ownership should be confirmed with the team.
+## Development workflow
 
-## 9. Development status (last documented evidence)
+The project uses feature branches and pull requests. Historically documented branches include `be/auth-db`, `be/rag`, `fe/admin`, `fe/member`, and `docs/qa`. Changes should be reviewed before merging into `main`.
 
-- **Backend:** Authentication and invitation endpoints and SQL schema files reported; API verification pending.
-- **Member frontend:** React/Vite setup and a member login UI reported; live backend integration not confirmed.
-- **Admin frontend:** Technology stack reported; completed screens not documented in the available update.
-- **RAG:** Setup and implementation work reported; end-to-end retrieval and citation behavior not verified.
-- **PostgreSQL/Docker/integration:** Setup or integration activity reported by team lead; working configuration not independently verified.
-- **Documentation/QA:** Competitor research and progress tracking prepared. No completed QA test-run evidence was available in the previous report.
-- **16 November 2026:** **New teammate commits and completed features not verified**. This README must be reconciled with the latest repository changes before the team marks it final.
+## Release readiness
 
-For detailed statuses, outstanding questions, and the update log, see [`progress.md`](progress.md).
+The team reports that the application is **mostly complete and approaching deployment**. Before describing it as deployed or production-ready, confirm:
 
-## 10. Collaboration
+- [ ] Frontend-to-backend login, session handling, and logout behavior
+- [ ] Admin and member permissions, including cross-organization isolation
+- [ ] Document upload, processing, and supported file formats
+- [ ] RAG relevance, citations, and appropriate “answer not found” handling
+- [ ] Database schema/migrations and required environment variables
+- [ ] Deployment configuration, secret management, and health checks
+- [ ] End-to-end QA results, resolved blocking bugs, and successful build/run
+- [ ] Live URL and deployment date, once the service is actually available
 
-Work is divided across branches such as `be/auth-db`, `be/rag`, `fe/admin`, `fe/member`, and `docs/qa`. Use pull requests to merge reviewed changes into `main`. The precise branch ownership and merge rules should follow the team's current agreement.
+For member-by-member status and verification gaps, see [`Infera_AI_Project_Progress_Updated.md`](./Infera_AI_Project_Progress_Updated.md).
 
-## 11. Testing and documentation expectations
+## Documentation
 
-- Verify implemented features against running code, not only screenshots or README claims.
-- Document positive and negative tests for login, invitations, document access, and AI answers.
-- Check that members cannot access another organization's or unauthorized folders' content.
-- Check that AI responses do not invent answers when evidence is missing.
-- Record test steps, expected result, actual result, and any defect evidence.
+- **System design:** architecture, intended data flows, permissions, and major components (early draft; update to match final code).
+- **Team workflow:** branch ownership, pull requests, and coordination rules (initial proposal).
+- **Competitor research:** comparison of enterprise AI search and document Q&A platforms.
+- **Progress tracker:** workstream updates and deployment checklist.
 
-## 12. Important limitations
+---
 
-This document is a **source-grounded draft** compiled from the team's earlier documentation and member reports. It is **not** a new audit of 16 November commits. Some items from the early architecture document (refresh tokens, Redis/BullMQ, pgvector, streaming chat, etc.) were only proposed and may have changed. Confirm the latest code, configuration, and ownership before claiming them as working.
+**Developed by Team Titans**  
+*Last documentation update: 19 November 2026.*
