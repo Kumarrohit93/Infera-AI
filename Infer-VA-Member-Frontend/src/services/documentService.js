@@ -1,6 +1,6 @@
 import { fetchWithSession } from "./authService";
 
-const API_URL = (import.meta.env.VITE_RAG_API_URL || "http://localhost:7000/api")
+const API_URL = (import.meta.env.VITE_RAG_API_URL || "https://infera-rag-ai.onrender.com/api")
   .replace(/\/$/, "");
 
 function getAuthHeaders() {

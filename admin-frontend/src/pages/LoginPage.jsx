@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 // Set VITE_AUTH_URL in the Vercel project environment.
-const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api';
+const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
