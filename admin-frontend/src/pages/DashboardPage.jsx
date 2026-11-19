@@ -122,7 +122,15 @@ export default function DashboardPage() {
     queryKey: ['documents', 'All'],
     queryFn: () => documentApi.getDocuments('All'),
     initialData: [],
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.some((document) =>
+        ['queued', 'processing'].includes(
+          (document.processingStatus || document.status).toLowerCase()
+        )
+      )
+        ? 2000
+        : false,
     retry: false,
   });
 
