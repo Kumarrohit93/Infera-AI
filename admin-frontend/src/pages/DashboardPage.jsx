@@ -46,7 +46,7 @@ function getStoredAdminProfile() {
   } catch {
     // ignore storage errors
   }
-  return { name: 'Jiya Sharma', email: 'jiyasharma@infera.ai', role: 'Admin' };
+  return
 }
 
 // Framer motion variants
