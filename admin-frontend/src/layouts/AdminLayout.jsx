@@ -25,7 +25,7 @@ export default function AdminLayout({ children }) {
   }
 
   const handleLogout = async () => {
-    await fetch(`${import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api'}/auth/logout`, {
+    await fetch(`${import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api'}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     }).catch((error) => console.error('Could not revoke the server session:', error));

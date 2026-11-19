@@ -27,6 +27,8 @@ const allowedOrigins = new Set(
   [
     "http://localhost:5001",
     "http://localhost:5173",
+    "https://infera-ai-plum.vercel.app",
+    "https://member-panel.vercel.app",
     process.env.CORS_ORIGIN,
     process.env.CORS_ORIGINS,
   ]

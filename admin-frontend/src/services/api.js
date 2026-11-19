@@ -6,8 +6,8 @@
  * 2. Infera-RAG-Backend (Documents, Folders, Vector Search, AI Chat on Port 7000)
  */
 
-const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api').replace(/\/$/, '');
-const RAG_API_BASE_URL = (import.meta.env.VITE_RAG_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:7000/api').replace(/\/$/, '');
+const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api').replace(/\/$/, '');
+const RAG_API_BASE_URL = (import.meta.env.VITE_RAG_API_URL || import.meta.env.VITE_API_URL || 'https://infera-rag-ai.onrender.com/api').replace(/\/$/, '');
 
 function handleUnauthorized() {
   localStorage.removeItem('accessToken');

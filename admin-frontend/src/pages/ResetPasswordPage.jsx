@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'http://localhost:9000/api';
+const AUTH_API_URL = import.meta.env.VITE_AUTH_URL || 'https://infera-ai.onrender.com/api';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
