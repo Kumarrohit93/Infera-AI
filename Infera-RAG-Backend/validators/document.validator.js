@@ -8,7 +8,7 @@ const documentIdParamSchema = z.object({ id: z.uuid() })
 const listDocumentsQuerySchema = z.object({
   folderId: z.uuid().optional(),
   status: z
-    .enum(["pending", "processing", "ready", "failed", "archived"])
+    .enum(["pending", "queued", "processing", "ready", "failed", "archived"])
     .optional(),
   search: z.string().trim().max(255).optional(),
   page: z.coerce.number().int().min(1).default(1),
