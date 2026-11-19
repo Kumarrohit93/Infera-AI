@@ -5,7 +5,7 @@ const {
   saveFeedback,
   listFeedback,
   getMonitoring,
-} = require("../Controllers/feedback.controller");
+} = require("../controllers/feedback.controller");
 
 const router = express.Router();
 router.post("/:id", authenticate, saveFeedback);

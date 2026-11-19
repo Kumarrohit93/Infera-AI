@@ -8,11 +8,11 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const pool = require("./Config/db");
 const { initDb } = require("./Config/initDb");
 const { waitForIngestionQueue, closeIngestionQueue } = require("./Services/ingestionQueue");
-const documentRoutes = require("./Routes/document.routes");
-const folderRoutes = require("./Routes/folder.routes");
-const ragRoutes = require("./Routes/rag.routes");
-const conversationRoutes = require("./Routes/conversation.routes");
-const feedbackRoutes = require("./Routes/feedback.routes");
+const documentRoutes = require("./routes/document.routes");
+const folderRoutes = require("./routes/folder.routes");
+const ragRoutes = require("./routes/rag.routes");
+const conversationRoutes = require("./routes/conversation.routes");
+const feedbackRoutes = require("./routes/feedback.routes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
