@@ -341,6 +341,20 @@ export const authApi = {
   getCurrentUser: async () => request('/auth/me', {}, AUTH_API_BASE_URL),
 };
 
+export const analyticsApi = {
+  getDashboard: async () => {
+    const analytics = await request('/feedback/admin/analytics/dashboard', {}, RAG_API_BASE_URL);
+    if (
+      !analytics ||
+      !Array.isArray(analytics.chartData) ||
+      !Array.isArray(analytics.recentActivities)
+    ) {
+      throw new Error('The dashboard analytics API returned an unexpected response.');
+    }
+    return analytics;
+  },
+};
+
 // ==========================================
 // 4. Team Members & Invitations API (Infera-Backend - Port 9000)
 // ==========================================
