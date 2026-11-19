@@ -248,7 +248,6 @@ export default function DashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#25211E] tracking-tight">
-                Welcome back, {adminProfile?.name?.trim() || 'Jiya Sharma'}
                 Welcome back, {account?.user?.name || 'Admin'}
               </h2>
               <p className="text-xs sm:text-sm text-[#77716B] leading-relaxed">
