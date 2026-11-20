@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { History, MessageSquarePlus, PanelLeftClose, Send, Trash2, X } from "lucide-react";
 import { documentService } from "../services/documentService";
+import MarkdownMessage from "../components/MarkdownMessage";
 
 const WELCOME_MESSAGE = {
   id: "welcome",
@@ -493,7 +494,11 @@ export default function AIChat() {
                     : "border border-[#E8C8CC] bg-white text-[#5E232B]"
                 }`}
               >
-                {msg.text}
+                {msg.sender === "ai" ? (
+                  <MarkdownMessage content={msg.text} />
+                ) : (
+                  msg.text
+                )}
               </div>
             </div>
           ))}
