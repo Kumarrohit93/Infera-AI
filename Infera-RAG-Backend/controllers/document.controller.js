@@ -1,6 +1,7 @@
 const {
   uploadDocumentSchema,
   documentIdParamSchema,
+  listDocumentsQuerySchema,
 } = require("../validators/document.validator");
 const documentService = require("../Services/document.service");
 const { deleteDocument: removeDocument } = require("../Services/documentDelete.service");
@@ -38,7 +39,7 @@ async function listDocumentVersions(req, res) {
 }
 
 async function listDocuments(req, res) {
-  const folderId = req.query.folderId;
+  const { folderId } = parseOrThrow(listDocumentsQuerySchema, req.query);
   const documents = await documentService.listDocuments({
     organizationId: req.user.organizationId,
     userId: req.user.userId,

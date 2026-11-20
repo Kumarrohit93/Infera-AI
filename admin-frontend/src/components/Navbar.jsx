@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { authApi } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -28,21 +29,6 @@ const PAGE_META = {
   '/settings': { title: 'Settings', subtitle: 'Configure organization, models & security' }
 };
 
-function getStoredAdminProfile() {
-  try {
-    const raw = localStorage.getItem('infera_admin_settings_v1');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.profileData?.name) {
-        return parsed.profileData;
-      }
-    }
-  } catch {
-    // ignore storage errors
-  }
-  return { name: 'Jiya Sharma', email: 'jiyasharma@infera.ai', role: 'Admin' };
-}
-
 export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -58,16 +44,17 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Sync Admin Profile with SettingsPage -> General tab
-  const { data: adminProfile } = useQuery({
-    queryKey: ['adminProfile'],
-    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
-    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
-    enabled: false
+  const { data: account } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: authApi.getCurrentUser,
+    retry: false,
   });
 
-  const adminName = adminProfile?.name?.trim() || 'Jiya Sharma';
-  const adminRole = adminProfile?.role?.trim() || 'Admin';
+  const adminName = account?.user?.name?.trim() || 'Admin';
+  const accountRole = account?.role?.trim();
+  const adminRole = accountRole
+    ? `${accountRole[0].toUpperCase()}${accountRole.slice(1)}`
+    : 'Admin';
   const adminInitials =
     adminName
       .split(' ')
@@ -75,7 +62,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       .map((n) => n[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() || 'JS';
+      .toUpperCase() || 'AD';
 
   // Subscribe to existing TanStack Query caches without triggering extra fetches
   const { data: documents = [] } = useQuery({

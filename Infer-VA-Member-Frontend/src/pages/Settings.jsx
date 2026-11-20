@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { User, Save } from "lucide-react";
+import { User, Sparkles, Save, ShieldCheck } from "lucide-react";
 import { getStoredUser } from "../services/authService";
 
 export default function Settings() {

@@ -15,13 +15,14 @@ These `VITE_` values are included in browser code. Never put secrets in them.
 
 ## Render services
 
-Create three Node services from the repository:
+Create the two API services from the repository. A separate worker service is
+optional:
 
 | Service | Root directory | Start command |
 |---|---|---|
 | Auth API | `Infera-Backend` | `node app.js` |
 | RAG API | `Infera-RAG-Backend` | `npm start` |
-| Ingestion worker | `Infera-RAG-Backend` | `npm run worker` |
+| Ingestion worker (optional separate service) | `Infera-RAG-Backend` | `npm run worker` |
 
 Use the same pgvector PostgreSQL database for both APIs. The auth API accepts
 `DATABASE_URL`; the RAG API accepts `DATABASE_URL` or the `DB_HOST`, `DB_PORT`,
@@ -39,11 +40,16 @@ startup, including the document-version and full-text search migrations; the
 API and worker must be able to create the `vector` extension and required
 indexes. Use `/health/ready` as the RAG readiness check.
 
-The worker is a separate always-on Render background service. It processes
-queued document uploads and retries transient failures. The previous indexed
-version remains current if replacement-version indexing fails. Both admin and
-member chat use the authenticated `/api/rag/ask/stream` endpoint; chat history
-and citations are saved only after a complete answer is generated.
+The worker can run as a separate always-on Render background service, or inside
+the RAG API service by setting `RUN_INGESTION_WORKER=true`. The integrated mode
+avoids paying for a second service; set `INGESTION_CONCURRENCY=1` for a small
+instance. Both modes require the same `REDIS_URL`. Free web instances may sleep
+or restart, which can delay background jobs; a separate always-on worker is
+more reliable. The worker processes queued uploads and retries transient
+failures. The previous indexed version remains current if replacement-version
+indexing fails. Both admin and member chat use the authenticated
+`/api/rag/ask/stream` endpoint; chat history and citations are saved only after
+a complete answer is generated.
 
 Do not run `seed-test-admin.js` in production. Keep production credentials in
 Render/Vercel environment settings, not in repository `.env` files.
