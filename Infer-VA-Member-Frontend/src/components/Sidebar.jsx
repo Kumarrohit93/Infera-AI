@@ -31,6 +31,14 @@ export default function Sidebar({ onClose }) {
     }
   };
 
+  // Function to handle link clicks based on screen size
+  const handleNavClick = () => {
+    // Agar screen mobile/tablet ki hai (< 1024px), tabhi sidebar close hoga
+    if (window.innerWidth < 1024) {
+      onClose?.();
+    }
+  };
+
   return (
     <aside className="flex h-dvh w-64 flex-col justify-between border-r border-[#D7A781]/30 bg-[#722F37] text-white shadow-2xl">
       <div>
