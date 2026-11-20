@@ -7,7 +7,7 @@ import MarkdownMessage from "../components/MarkdownMessage";
 const WELCOME_MESSAGE = {
   id: "welcome",
   sender: "ai",
-  text: "Hello Vibha! I am Infera AI. Ask me anything from your organisation's permitted documents.",
+  text: "Hello! I am Infera AI. Ask me anything from your organisation's permitted documents.",
 };
 
 function normalizeMessages(raw) {
@@ -72,7 +72,7 @@ export default function AIChat() {
     const greetings = ["hi", "hii", "hiii", "hello", "hey", "good morning", "good afternoon"];
 
     if (greetings.includes(cleanMsg)) {
-      return "Hello Vibha! How can I help you explore your workspace documents today?";
+      return "Hello! How can I help you explore your workspace documents today?";
     }
     if (cleanMsg.includes("how are you")) {
       return "I'm operating at peak performance! What document or topic would you like to search today?";
