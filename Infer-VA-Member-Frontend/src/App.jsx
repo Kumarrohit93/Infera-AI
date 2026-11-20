@@ -8,23 +8,27 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import ResetPassword from "./pages/ResetPassword";
+import PageTransitionLoader from "./components/PageTransitionLoader";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/accept-invitation" element={<AcceptInvitation />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+    <>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<MemberDashboard />} />
-        <Route path="/documents" element={<DocumentExplorer />} />
-        <Route path="/chat" element={<AIChat />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/profile" element={<Profile />} />
-      </Route>
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<MemberDashboard />} />
+          <Route path="/documents" element={<DocumentExplorer />} />
+          <Route path="/chat" element={<AIChat />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <PageTransitionLoader />
+    </>
   );
 }
