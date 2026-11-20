@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
-import {
-  MessageSquare,
-  Trash2,
-  Search,
-  ArrowUpRight,
-  Clock,
-} from "lucide-react";
+import { MessageSquare, Trash2, Search, ArrowUpRight, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { documentService } from "../services/documentService";
 
 function formatDate(value) {
+  if (!value) return "Date unavailable";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
 
@@ -33,7 +28,13 @@ export default function ChatHistory() {
     documentService
       .getConversations()
       .then((conversations) => {
-        if (active) setChats(conversations);
+        if (!active) return;
+        const list = Array.isArray(conversations)
+          ? conversations
+          : Array.isArray(conversations?.conversations)
+            ? conversations.conversations
+            : [];
+        setChats(list);
       })
       .catch((requestError) => {
         if (active) {
@@ -54,7 +55,9 @@ export default function ChatHistory() {
     setDeletingId(id);
     try {
       await documentService.deleteConversation(id);
-      setChats((currentChats) => currentChats.filter((chat) => chat.id !== id));
+      setChats((currentChats) =>
+        currentChats.filter((chat) => (chat.id ?? chat.conversationId ?? chat._id) !== id)
+      );
     } catch (requestError) {
       setError(requestError.message || "Failed to delete this conversation.");
     } finally {
@@ -65,7 +68,7 @@ export default function ChatHistory() {
   const normalizedSearch = searchTerm.toLowerCase();
   const filteredChats = chats.filter(
     (chat) =>
-      chat.title.toLowerCase().includes(normalizedSearch) ||
+      (chat.title || "").toLowerCase().includes(normalizedSearch) ||
       (chat.latestMessage || "").toLowerCase().includes(normalizedSearch)
   );
 
@@ -102,8 +105,13 @@ export default function ChatHistory() {
 
       <div className="space-y-3">
         {isLoading ? (
-          <div className="rounded-3xl border border-[#D7A781]/30 bg-white/90 p-12 text-center text-sm text-gray-500 shadow-sm">
-            Loading your conversations...
+          <div className="space-y-3 rounded-3xl border border-[#D7A781]/30 bg-white/90 p-6 shadow-sm">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-20 w-full animate-pulse rounded-2xl bg-[#F8F4E7]"
+              />
+            ))}
           </div>
         ) : filteredChats.length === 0 ? (
           <div className="rounded-3xl border border-[#D7A781]/30 bg-white/90 p-12 text-center shadow-sm">
@@ -118,56 +126,61 @@ export default function ChatHistory() {
             </p>
           </div>
         ) : (
-          filteredChats.map((chat) => (
-            <article
-              key={chat.id}
-              className="flex flex-col justify-between gap-4 rounded-2xl border border-[#D7A781]/40 bg-white p-5 shadow-sm transition hover:border-[#722F37] sm:flex-row sm:items-center"
-            >
-              <div className="flex min-w-0 items-start gap-4 sm:items-center">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#D7A781]/30 bg-[#F8F4E7] text-[#722F37]">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="truncate text-base font-bold text-[#722F37]">
-                    {chat.title || "New Conversation"}
-                  </h3>
-                  {chat.latestMessage && (
-                    <p className="mt-1 truncate text-sm text-gray-600">
-                      {chat.latestMessage}
-                    </p>
-                  )}
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {formatDate(chat.updatedAt)}
-                    </span>
-                    <span>• {chat.messageCount} messages</span>
+          filteredChats.map((chat) => {
+            const chatId = chat.id ?? chat.conversationId ?? chat._id;
+            return (
+              <article
+                key={chatId}
+                className="flex flex-col justify-between gap-4 rounded-2xl border border-[#D7A781]/40 bg-white p-5 shadow-sm transition hover:border-[#722F37] sm:flex-row sm:items-center"
+              >
+                <div className="flex min-w-0 items-start gap-4 sm:items-center">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#D7A781]/30 bg-[#F8F4E7] text-[#722F37]">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-bold text-[#722F37]">
+                      {chat.title || "New Conversation"}
+                    </h3>
+                    {chat.latestMessage && (
+                      <p className="mt-1 truncate text-sm text-gray-600">
+                        {chat.latestMessage}
+                      </p>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {formatDate(chat.updatedAt)}
+                      </span>
+                      {typeof chat.messageCount === "number" && (
+                        <span>• {chat.messageCount} messages</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <button
-                  onClick={() =>
-                    navigate("/chat", {
-                      state: { conversationId: chat.id },
-                    })
-                  }
-                  className="flex items-center gap-1.5 rounded-xl bg-[#722F37] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5B242C]"
-                >
-                  <span>Open Chat</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(chat.id)}
-                  disabled={deletingId === chat.id}
-                  className="rounded-xl border border-gray-100 p-2.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Delete Chat"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </article>
-          ))
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    onClick={() =>
+                      navigate("/chat", {
+                        state: { conversationId: chatId },
+                      })
+                    }
+                    className="flex items-center gap-1.5 rounded-xl bg-[#722F37] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5B242C]"
+                  >
+                    <span>Open Chat</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(chatId)}
+                    disabled={deletingId === chatId}
+                    className="rounded-xl border border-gray-100 p-2.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Delete Chat"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </article>
+            );
+          })
         )}
       </div>
     </div>
