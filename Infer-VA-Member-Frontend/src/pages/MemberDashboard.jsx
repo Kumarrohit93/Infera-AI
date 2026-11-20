@@ -58,21 +58,21 @@ export default function MemberDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-[#722F37] p-8 text-white shadow-xl">
-        <div className="absolute -bottom-10 -right-10 h-48 w-48 rounded-full bg-[#D7A781]/20 blur-2xl" />
+      {/* Light Blush Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-[#E3B8BE] bg-gradient-to-br from-[#FCECEF] via-[#F9E2E6] to-[#F3DADF] p-8 text-[#5E232B] shadow-xs">
+        <div className="absolute -bottom-10 -right-10 h-48 w-48 rounded-full bg-[#E8B8C0]/35 blur-2xl" />
         <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="rounded-full bg-[#D7A781]/30 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#D7A781]">
+              <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="rounded-full border border-[#E2B8BE] bg-white/85 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#853842]">
                 RAG Engine Online • Secure Workspace
               </span>
             </div>
-            <h1 className="mt-3 text-3xl font-bold sm:text-4xl">
-              Welcome back, <span className="text-[#D7A781]">{member?.name || "Member"}</span>
+            <h1 className="mt-3 text-3xl font-bold text-[#5A232B] sm:text-4xl">
+              Welcome back, <span className="text-[#9E4752]">{member?.name || "Member"}</span>
             </h1>
-            <p className="mt-2 text-sm text-white/80 max-w-xl">
+            <p className="mt-2 max-w-xl text-sm text-[#6E3B43]">
               Access your permitted organizational knowledge base, explore documents, and chat with AI securely.
             </p>
           </div>
@@ -80,7 +80,7 @@ export default function MemberDashboard() {
       </div>
 
       {loadError && (
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           Could not load all workspace data: {loadError}
         </div>
       )}
@@ -88,83 +88,91 @@ export default function MemberDashboard() {
       {/* Statistics Grid with Lucide Icons */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Permitted Folders */}
-        <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
+        <div className="relative rounded-2xl border border-[#E8C8CC] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Permitted Folders</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#8C6268]">
+              Permitted Folders
+            </p>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8E5E8] text-[#9E4752]">
               <FolderKanban className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-[#722F37]">
+          <p className="mt-3 text-3xl font-bold text-[#5E232B]">
             {isLoading ? "..." : stats.permittedFolders}
           </p>
-          <div className="mt-3 inline-block rounded-md bg-[#F8F4E7] px-2.5 py-1 text-[11px] font-medium text-[#722F37]">
+          <div className="mt-3 inline-block rounded-md border border-[#F2DCE0] bg-[#FDF6F6] px-2.5 py-1 text-[11px] font-medium text-[#6E2D36]">
             Assigned by Admin
           </div>
         </div>
 
         {/* Accessible Documents */}
-        <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
+        <div className="relative rounded-2xl border border-[#E8C8CC] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Accessible Documents</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#8C6268]">
+              Accessible Documents
+            </p>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8E5E8] text-[#9E4752]">
               <FileText className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-[#722F37]">
+          <p className="mt-3 text-3xl font-bold text-[#5E232B]">
             {isLoading ? "..." : stats.totalDocuments}
           </p>
-          <div className="mt-3 inline-block rounded-md bg-[#F8F4E7] px-2.5 py-1 text-[11px] font-medium text-[#722F37]">
+          <div className="mt-3 inline-block rounded-md border border-[#F2DCE0] bg-[#FDF6F6] px-2.5 py-1 text-[11px] font-medium text-[#6E2D36]">
             Ready for query
           </div>
         </div>
 
         {/* Active Chats */}
-        <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
+        <div className="relative rounded-2xl border border-[#E8C8CC] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Chats</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#8C6268]">
+              Active Chats
+            </p>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8E5E8] text-[#9E4752]">
               <MessageSquare className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-[#722F37]">
+          <p className="mt-3 text-3xl font-bold text-[#5E232B]">
             {isLoading ? "..." : stats.activeChats}
           </p>
-          <div className="mt-3 inline-block rounded-md bg-[#F8F4E7] px-2.5 py-1 text-[11px] font-medium text-[#722F37]">
+          <div className="mt-3 inline-block rounded-md border border-[#F2DCE0] bg-[#FDF6F6] px-2.5 py-1 text-[11px] font-medium text-[#6E2D36]">
             Conversations started
           </div>
         </div>
 
         {/* Storage Used */}
-        <div className="relative rounded-2xl border border-white bg-white/80 p-6 shadow-sm">
+        <div className="relative rounded-2xl border border-[#E8C8CC] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Storage Used</p>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7A781]/15 text-[#722F37]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#8C6268]">
+              Storage Used
+            </p>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F8E5E8] text-[#9E4752]">
               <HardDrive className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-[#722F37]">
+          <p className="mt-3 text-3xl font-bold text-[#5E232B]">
             {isLoading ? "..." : stats.storageUsed}
           </p>
-          <div className="mt-3 inline-block rounded-md bg-[#F8F4E7] px-2.5 py-1 text-[11px] font-medium text-[#722F37]">
+          <div className="mt-3 inline-block rounded-md border border-[#F2DCE0] bg-[#FDF6F6] px-2.5 py-1 text-[11px] font-medium text-[#6E2D36]">
             Allocated limit
           </div>
         </div>
       </div>
 
       {/* Empty State Section */}
-      <div className="rounded-3xl border border-[#D7A781]/30 bg-white/90 p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#722F37]/10 text-[#722F37]">
+      <div className="rounded-3xl border border-[#E8C8CC] bg-white p-8 text-center shadow-2xs">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F8E5E8] text-[#9E4752]">
           <FolderOpen className="h-8 w-8" />
         </div>
-        <h3 className="mt-4 text-lg font-bold text-[#722F37]">
+        <h3 className="mt-4 text-lg font-bold text-[#5E232B]">
           {isLoading
             ? "Loading your workspace..."
             : stats.totalDocuments > 0
               ? "Your Documents Are Ready"
               : "No Recent Activity Found"}
         </h3>
-        <p className="mt-1 text-sm text-gray-500 max-w-md mx-auto">
+        <p className="mx-auto mt-1 max-w-md text-sm text-[#8C6268]">
           {stats.totalDocuments > 0
             ? `You can explore ${stats.totalDocuments} accessible document${stats.totalDocuments === 1 ? "" : "s"} or start a chat.`
             : "You currently do not have any accessible documents or chat history. Ask your administrator to assign a folder."}

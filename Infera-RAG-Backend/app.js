@@ -140,18 +140,21 @@ async function shutdown() {
 
 startupPromise = startServer();
 startupPromise.catch(async (error) => {
-    console.error("[Startup] RAG backend initialization failed:", error.message);
+    console.error("[Startup] RAG backend initialization failed:");
+    console.error(error.stack || error);
+
     process.exitCode = 1;
+
     try {
         await shutdown();
     } catch (shutdownError) {
-        console.error("[Shutdown] RAG backend cleanup failed:", shutdownError.message);
+        console.error("[Shutdown] RAG backend cleanup failed:", shutdownError.stack || shutdownError);
     }
 });
 
 function handleShutdownSignal() {
     shutdown().catch((error) => {
-        console.error("[Shutdown] RAG backend cleanup failed:", error.message);
+        console.error("[Shutdown] RAG backend cleanup failed:", error.stack || error);
         process.exitCode = 1;
     });
 }

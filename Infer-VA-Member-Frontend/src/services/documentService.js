@@ -1,7 +1,8 @@
 import { fetchWithSession } from "./authService";
 
-const API_URL = (import.meta.env.VITE_RAG_API_URL || "https://infera-rag-ai.onrender.com/api")
-  .replace(/\/$/, "");
+const API_URL = (
+  import.meta.env.VITE_RAG_API_URL || "https://infera-rag-ai.onrender.com/api"
+).replace(/\/$/, "");
 
 function getAuthHeaders() {
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
@@ -9,6 +10,15 @@ function getAuthHeaders() {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+function handleUnauthorized(response) {
+  if (response.status === 401) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.location.href = "/";
+    throw new Error("Your session expired. Please sign in again.");
+  }
 }
 
 async function consumeEventStream(response, onEvent) {
@@ -67,14 +77,8 @@ async function getList(endpoint, resourceName) {
   const response = await fetchWithSession(`${API_URL}${endpoint}`, {
     headers: getAuthHeaders(),
   });
+  handleUnauthorized(response);
   const payload = await response.json().catch(() => null);
-
-  if (response.status === 401) {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    window.location.href = "/";
-    throw new Error("Your session expired. Please sign in again.");
-  }
 
   if (!response.ok) {
     throw new Error(
@@ -110,12 +114,12 @@ export const documentService = {
     const res = await fetchWithSession(`${API_URL}/conversations`, {
       headers: getAuthHeaders(),
     });
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || "Failed to load conversations");
+      throw new Error(json?.error?.message || json?.message || "Failed to load conversations");
     }
-    const json = await res.json();
-    return json.data || [];
+    return Array.isArray(json) ? json : json.data || [];
   },
 
   async createConversation(title = "New Conversation") {
@@ -124,34 +128,41 @@ export const documentService = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ title }),
     });
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || "Failed to create conversation");
+      throw new Error(json?.error?.message || json?.message || "Failed to create conversation");
     }
-    const json = await res.json();
-    return json.data;
+    return json.data ?? json;
   },
 
   async getConversationMessages(conversationId) {
-    const res = await fetchWithSession(`${API_URL}/conversations/${conversationId}/messages`, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetchWithSession(
+      `${API_URL}/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || "Failed to load conversation messages");
+      throw new Error(json?.error?.message || json?.message || "Failed to load conversation messages");
     }
-    const json = await res.json();
-    return json.data || [];
+    return Array.isArray(json) ? json : json.data || [];
   },
 
   async deleteConversation(conversationId) {
-    const res = await fetchWithSession(`${API_URL}/conversations/${conversationId}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const res = await fetchWithSession(
+      `${API_URL}/conversations/${encodeURIComponent(conversationId)}`,
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }
+    );
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || "Failed to delete conversation");
+      throw new Error(json?.error?.message || json?.message || "Failed to delete conversation");
     }
     return true;
   },
@@ -166,12 +177,36 @@ export const documentService = {
         ...(conversationId ? { conversationId } : {}),
       }),
     });
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || "Failed to retrieve AI answer");
+      throw new Error(json?.error?.message || json?.message || "Failed to retrieve AI answer");
     }
-    const json = await res.json();
-    return json.data;
+    return json.data ?? json;
+  },
+
+  // Bridge method used by AIChat.jsx
+  async sendChatMessage({ message, conversationId }) {
+    const data = await this.askQuestion({
+      question: message,
+      conversationId,
+    });
+
+    return {
+      ...data,
+      conversationId:
+        data?.conversationId ??
+        data?.conversation_id ??
+        data?.id ??
+        conversationId ??
+        null,
+      reply:
+        data?.answer ??
+        data?.reply ??
+        data?.response ??
+        data?.message ??
+        "",
+    };
   },
 
   async askQuestionStream({ question, conversationId, onEvent }) {
@@ -183,25 +218,24 @@ export const documentService = {
         ...(conversationId ? { conversationId } : {}),
       }),
     });
-    if (response.status === 401) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-      window.location.href = "/";
-      throw new Error("Your session expired. Please sign in again.");
-    }
+    handleUnauthorized(response);
     return consumeEventStream(response, onEvent || (() => {}));
   },
 
   async submitFeedback(messageId, { helpful, comment = "" }) {
-    const response = await fetchWithSession(`${API_URL}/feedback/${encodeURIComponent(messageId)}`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ helpful, comment }),
-    });
+    const response = await fetchWithSession(
+      `${API_URL}/feedback/${encodeURIComponent(messageId)}`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ helpful, comment }),
+      }
+    );
+    handleUnauthorized(response);
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(payload?.error?.message || "Could not save your rating.");
+      throw new Error(payload?.error?.message || payload?.message || "Could not save your rating.");
     }
-    return payload.data;
+    return payload?.data ?? payload;
   },
 };
