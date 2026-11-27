@@ -167,7 +167,7 @@ export default function ChatPage() {
               type="button"
               onClick={() => setActiveConvId(null)}
               disabled={isGenerating}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New Chat</span>
@@ -193,19 +193,19 @@ export default function ChatPage() {
               conversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`group flex items-start justify-between gap-2 p-2.5 rounded-[10px] border ${
+                  className={`group flex items-start justify-between gap-2 p-2.5 rounded-[10px] border transition-all duration-150 ${
                     activeConvId === conversation.id
                       ? 'bg-white border-[#E8DCD1] shadow-xs'
-                      : 'border-transparent hover:bg-white/70'
+                      : 'border-transparent hover:bg-white/70 hover:border-[#E8DCD1]/60'
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => setActiveConvId(conversation.id)}
                     disabled={isGenerating}
-                    className="flex items-start gap-2 min-w-0 flex-1 text-left"
+                    className="flex items-start gap-2 min-w-0 flex-1 text-left cursor-pointer"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#96613F]" />
+                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#96613F] transition-colors" />
                     <span className="min-w-0">
                       <span className="block text-xs font-semibold text-[#25211E] truncate">
                         {conversation.title}
@@ -223,7 +223,7 @@ export default function ChatPage() {
                     disabled={isGenerating}
                     aria-label={`Delete ${conversation.title}`}
                     title="Delete chat"
-                    className="p-1 rounded-md text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF]"
+                    className="p-1 rounded-md text-[#77716B] hover:text-[#A83833] hover:bg-[#FDF0EF] opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-150 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -247,7 +247,12 @@ export default function ChatPage() {
                 Loading conversation...
               </div>
             ) : messages.length === 0 && pendingMessages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8 px-2">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-8 px-2"
+              >
                 <BookOpen className="w-10 h-10 text-[#96613F] mb-4" />
                 <h3 className="text-base sm:text-lg font-bold text-[#25211E]">
                   Query your knowledge base
@@ -255,18 +260,21 @@ export default function ChatPage() {
                 <p className="text-xs text-[#77716B] mt-2 leading-relaxed">
                   Ask a question to get an answer grounded in documents you can access.
                 </p>
-              </div>
+              </motion.div>
             ) : (
               [...messages, ...pendingMessages].map((message) => {
                 const isUserMessage = message.role === 'user';
                 const citations = message.sources || [];
                 return (
-                  <div
+                  <motion.div
                     key={message.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     className={`flex ${isUserMessage ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-3xl p-4 rounded-[16px] shadow-xs ${
+                      className={`max-w-3xl p-4 rounded-[16px] shadow-xs transition-shadow duration-150 ${
                         isUserMessage
                           ? 'bg-[#96613F] text-white rounded-tr-none'
                           : 'bg-white border border-[#E8DCD1] text-[#25211E] rounded-tl-none'
@@ -290,7 +298,7 @@ export default function ChatPage() {
                                 key={citation.sourceId || index}
                                 type="button"
                                 onClick={() => setActiveCitation(citation)}
-                                className="text-left p-3 rounded-[10px] bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] flex items-center gap-2"
+                                className="text-left p-3 rounded-[10px] bg-[#FAF7F2] border border-[#E8DCD1] hover:border-[#96613F] hover:-translate-y-0.5 hover:shadow-2xs transition-all duration-150 flex items-center gap-2 cursor-pointer"
                               >
                                 <FileText className="w-4 h-4 text-[#96613F] shrink-0" />
                                 <span className="min-w-0">
@@ -319,7 +327,7 @@ export default function ChatPage() {
                           : ''}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}
@@ -339,12 +347,12 @@ export default function ChatPage() {
                 value={queryInput}
                 onChange={(event) => setQueryInput(event.target.value)}
                 placeholder="Ask a question about your organization's documents..."
-                className="flex-1 px-4 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[12px] text-xs sm:text-sm text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F]"
+                className="flex-1 px-4 py-2.5 bg-[#FAF7F2] border border-[#E8DCD1] rounded-[12px] text-xs sm:text-sm text-[#25211E] focus:bg-white focus:outline-none focus:border-[#96613F] focus:ring-2 focus:ring-[#96613F]/15 transition-all duration-150"
               />
               <button
                 type="submit"
                 disabled={!queryInput.trim() || isGenerating}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[12px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[12px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold disabled:opacity-50 transition-all duration-150 active:scale-95 shadow-sm cursor-pointer"
               >
                 <span>Ask</span>
                 <Send className="w-4 h-4" />
@@ -362,6 +370,7 @@ export default function ChatPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
                 onClick={() => setActiveCitation(null)}
                 className="fixed inset-0 z-[100] flex items-center justify-center bg-[#25211E]/40 backdrop-blur-sm p-4"
               >
@@ -369,6 +378,7 @@ export default function ChatPage() {
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
                   onClick={(event) => event.stopPropagation()}
                   className="bg-white border border-[#E8DCD1] rounded-[16px] max-w-lg w-full p-6 shadow-2xl"
                 >
@@ -378,7 +388,7 @@ export default function ChatPage() {
                       type="button"
                       onClick={() => setActiveCitation(null)}
                       aria-label="Close source reference"
-                      className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2]"
+                      className="p-1.5 rounded-lg text-[#77716B] hover:bg-[#FAF7F2] transition-colors cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>

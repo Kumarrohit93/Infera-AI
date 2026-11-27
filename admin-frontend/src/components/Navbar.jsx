@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { authApi } from '../services/api';
 import {
   Search,
   Bell,
@@ -29,6 +30,21 @@ const PAGE_META = {
   '/settings': { title: 'Settings', subtitle: 'Configure organization, models & security' }
 };
 
+function getStoredAdminProfile() {
+  try {
+    const raw = localStorage.getItem('infera_admin_settings_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.profileData?.name) {
+        return parsed.profileData;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
 export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,17 +60,24 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
+  // Sync Admin Profile with Auth Backend + SettingsPage -> General tab
   const { data: account } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,
     retry: false,
   });
 
-  const adminName = account?.user?.name?.trim() || 'Admin';
-  const accountRole = account?.role?.trim();
-  const adminRole = accountRole
-    ? `${accountRole[0].toUpperCase()}${accountRole.slice(1)}`
-    : 'Admin';
+  const { data: adminProfile } = useQuery({
+    queryKey: ['adminProfile'],
+    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    enabled: false
+  });
+
+  const adminName = adminProfile?.name?.trim() || account?.user?.name || 'Admin';
+  const adminRole =
+    adminProfile?.role?.trim() ||
+    (account?.role === 'admin' ? 'Admin' : account?.role || 'Admin');
   const adminInitials =
     adminName
       .split(' ')
@@ -62,7 +85,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       .map((n) => n[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() || 'AD';
+      .toUpperCase() || 'A';
 
   // Subscribe to existing TanStack Query caches without triggering extra fetches
   const { data: documents = [] } = useQuery({
@@ -200,6 +223,9 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
   const handleLogout = () => {
     setShowProfileMenu(false);
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('infera_admin_settings_v1');
+    localStorage.removeItem('infera_admin_query_cache_v1');
+    queryClient.clear();
     if (onLogout) {
       onLogout();
     } else {

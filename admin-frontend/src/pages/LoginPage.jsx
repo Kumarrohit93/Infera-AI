@@ -318,13 +318,13 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full text-xs pl-10 pr-10 py-2.5 rounded-xl border border-[#E8DCD1] bg-[#FAF7F2]/40 focus:bg-white focus:outline-none focus:border-[#96613F] transition-all text-[#25211E]"
+                  className="w-full text-xs pl-10 pr-10 py-2.5 rounded-xl border border-[#E8DCD1] bg-[#FAF7F2]/40 focus:bg-white focus:outline-none focus:border-[#96613F] transition-all text-[#25211E] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77716B] hover:text-[#25211E] transition-colors p-0.5"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77716B] hover:text-[#25211E] transition-colors p-0.5 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

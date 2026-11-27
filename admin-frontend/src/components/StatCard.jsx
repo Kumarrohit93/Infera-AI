@@ -1,14 +1,13 @@
-
 export default function StatCard({ title, value, subtitle, trend, icon: Icon, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-5 shadow-xs transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-[#96613F]/50 ${
+      className={`h-full flex flex-col justify-between group bg-[#FFFFFF] border border-[#E8DCD1] rounded-[12px] p-5 shadow-xs transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-[#96613F]/50 ${
         onClick ? 'cursor-pointer' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#77716B]">
             {title}
           </p>
@@ -25,14 +24,14 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, on
       </div>
 
       {(subtitle || trend) && (
-        <div className="mt-3.5 pt-3 border-t border-[#F3E8DC] flex items-center justify-between text-xs">
+        <div className="mt-4 pt-3 border-t border-[#F3E8DC] flex flex-col items-start gap-1.5 text-[11px]">
           {trend && (
-            <span className="font-semibold text-[#96613F] bg-[#FAF7F2] px-2 py-0.5 rounded-md border border-[#E8DCD1]">
+            <span className="font-semibold text-[#96613F] bg-[#FAF7F2] px-2 py-0.5 rounded-md border border-[#E8DCD1] whitespace-nowrap">
               {trend}
             </span>
           )}
           {subtitle && (
-            <span className="text-[#77716B] truncate">
+            <span className="text-[#77716B] leading-snug">
               {subtitle}
             </span>
           )}
