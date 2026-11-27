@@ -1,5 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, MessageSquare, Settings, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  MessageSquare,
+  MessageSquarePlus,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { logout } from "../services/authService";
 
 export default function Sidebar({ onClose }) {
@@ -9,6 +16,7 @@ export default function Sidebar({ onClose }) {
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Document Explorer", path: "/documents", icon: FolderKanban },
     { name: "AI Chat", path: "/chat", icon: MessageSquare },
+    { name: "Feedback", path: "/feedback", icon: MessageSquarePlus },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
