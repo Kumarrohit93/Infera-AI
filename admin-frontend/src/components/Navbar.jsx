@@ -2,14 +2,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authApi } from '../services/api';
 import {
   Search,
-  Bell,
   ChevronRight,
   ChevronDown,
   Menu,
-  CheckCheck,
   X,
   Settings,
   LogOut,
@@ -17,6 +14,7 @@ import {
   Folder,
   Users
 } from 'lucide-react';
+import { authApi } from '../services/api';
 
 const PAGE_META = {
   '/dashboard': { title: 'Dashboard', subtitle: 'Workspace overview & telemetry' },
@@ -51,21 +49,20 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileSearchActive, setMobileSearchActive] = useState(false);
 
   const searchRef = useRef(null);
-  const notifRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Sync Admin Profile with Auth Backend + SettingsPage -> General tab
-  const { data: account } = useQuery({
+  const { data: currentUser } = useQuery({
     queryKey: ['current-user'],
     queryFn: authApi.getCurrentUser,
     retry: false,
+    staleTime: 60_000
   });
 
+  // Sync Admin Profile with SettingsPage -> General tab
   const { data: adminProfile } = useQuery({
     queryKey: ['adminProfile'],
     queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
@@ -73,10 +70,13 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
     enabled: false
   });
 
-  const adminName = adminProfile?.name?.trim() || account?.user?.name || 'Admin';
-  const adminRole =
-    adminProfile?.role?.trim() ||
-    (account?.role === 'admin' ? 'Admin' : account?.role || 'Admin');
+  const resolvedProfile = currentUser?.user || currentUser || adminProfile;
+  const adminName =
+    resolvedProfile?.name?.trim() ||
+    resolvedProfile?.fullName?.trim() ||
+    resolvedProfile?.email?.split('@')[0] ||
+    'Admin';
+  const adminRole = resolvedProfile?.role?.trim() || 'Admin';
   const adminInitials =
     adminName
       .split(' ')
@@ -84,7 +84,7 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       .map((n) => n[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() || 'A';
+      .toUpperCase() || 'AD';
 
   // Subscribe to existing TanStack Query caches without triggering extra fetches
   const { data: documents = [] } = useQuery({
@@ -115,24 +115,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
     enabled: false
   });
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'HR Policy.pdf Indexed',
-      detail: '142 semantic chunks embedded with zero errors.',
-      time: '18 mins ago',
-      read: false
-    },
-    {
-      id: 2,
-      title: 'OCR Warning: Scan.pdf',
-      detail: 'Page 47 timed out during raster OCR extraction.',
-      time: '2 hours ago',
-      read: false
-    }
-  ]);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
   const currentMeta = PAGE_META[location.pathname] || { title: 'Dashboard', subtitle: '' };
 
   const searchResults = useMemo(() => {
@@ -190,9 +172,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
         setShowSearchDropdown(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setShowProfileMenu(false);
       }
@@ -201,7 +180,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setShowSearchDropdown(false);
-        setShowNotifications(false);
         setShowProfileMenu(false);
         setMobileSearchActive(false);
       }
@@ -214,10 +192,6 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
 
   const handleLogout = () => {
     setShowProfileMenu(false);
@@ -472,86 +446,11 @@ export default function Navbar({ onOpenMobileSidebar, onLogout }) {
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Notifications Popover */}
-        <div className="relative" ref={notifRef}>
-          <button
-            type="button"
-            onClick={() => {
-              setShowNotifications((prev) => !prev);
-              setShowProfileMenu(false);
-            }}
-            aria-label="View notifications"
-            aria-expanded={showNotifications}
-            className={`relative p-2 rounded-[8px] sm:rounded-[10px] border transition-all duration-150 active:scale-95 cursor-pointer ${
-              showNotifications
-                ? 'bg-[#F3E8DC] border-[#96613F]/30 text-[#4A3023]'
-                : 'bg-[#FAF7F2] hover:bg-[#F3E8DC] text-[#25211E] border-[#E8DCD1]'
-            }`}
-          >
-            <Bell className="w-4 h-4 text-[#77716B]" />
-            {unreadCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-[#96613F] absolute top-1.5 right-1.5 ring-2 ring-white" />
-            )}
-          </button>
-
-          <AnimatePresence>
-            {showNotifications && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                style={{ transformOrigin: 'top right' }}
-                className="absolute right-0 mt-2 w-72 sm:w-80 bg-[#FFFFFF]/95 backdrop-blur-md border border-[#E8DCD1] rounded-[12px] shadow-xl z-50 overflow-hidden"
-              >
-                <div className="px-4 py-3 bg-[#FAF7F2] border-b border-[#E8DCD1] flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#25211E]">
-                    Notifications ({unreadCount})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleMarkAllRead}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#96613F] hover:text-[#4A3023] transition-colors cursor-pointer"
-                  >
-                    <CheckCheck className="w-3.5 h-3.5" />
-                    Mark read
-                  </button>
-                </div>
-
-                <div className="divide-y divide-[#E8DCD1] max-h-60 overflow-y-auto custom-sidebar-scroll">
-                  {notifications.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`px-4 py-3 text-xs transition-colors duration-150 ${
-                        item.read
-                          ? 'bg-[#FFFFFF] hover:bg-[#FAF7F2]/60'
-                          : 'bg-[#FAF7F2]/40 hover:bg-[#FAF7F2]/80'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-[#25211E]">{item.title}</p>
-                        {!item.read && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#96613F] mt-1.5 shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-[#77716B] mt-0.5 text-[11px] leading-relaxed">{item.detail}</p>
-                      <p className="text-[10px] text-[#96613F] mt-1 font-semibold">{item.time}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
         {/* Admin Profile Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
             type="button"
-            onClick={() => {
-              setShowProfileMenu((prev) => !prev);
-              setShowNotifications(false);
-            }}
+            onClick={() => setShowProfileMenu((prev) => !prev)}
             aria-label="Open profile menu"
             aria-expanded={showProfileMenu}
             className={`flex items-center gap-2 pl-1 sm:pl-1.5 pr-1.5 sm:pr-2.5 py-1 rounded-[10px] cursor-pointer border transition-all duration-150 active:scale-[0.98] ${

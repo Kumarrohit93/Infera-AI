@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, documentApi, folderApi, memberApi, feedbackApi } from '../services/api';
-import { useEffect } from 'react';
+import { authApi, analyticsApi, documentApi, folderApi, memberApi, feedbackApi } from '../services/api';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -116,6 +115,14 @@ export default function DashboardPage() {
   // Upload folder modal state
   const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
   const [targetUploadFolder, setTargetUploadFolder] = useState('');
+
+  // Sync Admin Profile with SettingsPage -> General tab
+  const { data: adminProfile } = useQuery({
+    queryKey: ['adminProfile'],
+    queryFn: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    initialData: () => queryClient.getQueryData(['adminProfile']) ?? getStoredAdminProfile(),
+    enabled: false
+  });
 
   const {
     data: account,
