@@ -4,16 +4,38 @@ import { FolderKanban, FileText, MessageSquare, HardDrive, FolderOpen } from "lu
 import { getStoredUser } from "../services/authService";
 import { documentService } from "../services/documentService";
 
+// Module-level cache taaki tab/page switch karne par baar-baar loading na dikhe
+let cachedDashboardStats = null;
+let cachedUserId = null;
+
+// Logout ke time is function ko call kar sakti hain taaki naye user ke liye fresh load ho
+export function clearDashboardCache() {
+  cachedDashboardStats = null;
+  cachedUserId = null;
+}
+
 export default function MemberDashboard() {
-  const [stats, setStats] = useState(initialDashboardStats);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
   const member = getStoredUser();
+  const currentUserId = member?.id || member?.email || "default";
+
+  // Agar same user ka data pehle se cached hai, toh loading false rahegi
+  const hasCache = cachedDashboardStats && cachedUserId === currentUserId;
+
+  const [stats, setStats] = useState(
+    hasCache ? cachedDashboardStats : initialDashboardStats
+  );
+  const [isLoading, setIsLoading] = useState(!hasCache);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let active = true;
 
     async function loadDashboard() {
+      // Sirf tabhi loading spinner/dots dikhayein jab cache na ho (jaise fresh login par)
+      if (!hasCache) {
+        setIsLoading(true);
+      }
+
       const results = await Promise.allSettled([
         documentService.getFolders(),
         documentService.getDocuments(),
@@ -36,12 +58,18 @@ export default function MemberDashboard() {
         return total + sizeInMb;
       }, 0);
 
-      setStats({
+      const updatedStats = {
         permittedFolders: folders.length,
         totalDocuments: documents.length,
         activeChats: conversations.length,
         storageUsed: `${storageUsed.toFixed(1)} MB`,
-      });
+      };
+
+      // Cache update karein
+      cachedDashboardStats = updatedStats;
+      cachedUserId = currentUserId;
+
+      setStats(updatedStats);
 
       const errors = results
         .filter((result) => result.status === "rejected")
@@ -54,7 +82,7 @@ export default function MemberDashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentUserId, hasCache]);
 
   return (
     <div className="space-y-8">

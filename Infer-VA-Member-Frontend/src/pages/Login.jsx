@@ -4,6 +4,7 @@ import {
   login as authenticateMember,
   requestPasswordReset,
 } from "../services/authService";
+import { triggerLoginSplash } from "../components/PageTransitionLoader";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -39,6 +40,8 @@ export default function Login() {
 
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("user", JSON.stringify(user));
+
+      triggerLoginSplash();
       navigate("/dashboard", { replace: true });
     } catch (error) {
       setErrorMessage(
