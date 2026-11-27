@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, Bell, ChevronDown, User, Settings, LogOut } from "lucide-react";
+import { Search, ChevronDown, User, Settings, LogOut } from "lucide-react";
 import { getStoredUser, getUserInitials, logout } from "../services/authService";
 
 export default function Navbar({ onToggleSidebar, sidebarOpen }) {
-  const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  const notifRef = useRef(null);
   const profileRef = useRef(null);
 
   const member = getStoredUser() || {};
@@ -14,23 +12,19 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const memberEmail = member.email || "";
 
   useEffect(() => {
-    if (!showNotif && !showProfile) return;
+    if (!showProfile) return;
 
     const handleOutsideClick = (event) => {
-      const clickedInsideNotif =
-        notifRef.current && notifRef.current.contains(event.target);
       const clickedInsideProfile =
         profileRef.current && profileRef.current.contains(event.target);
 
-      if (!clickedInsideNotif && !clickedInsideProfile) {
-        setShowNotif(false);
+      if (!clickedInsideProfile) {
         setShowProfile(false);
       }
     };
 
     const handleEscapeKey = (event) => {
       if (event.key === "Escape") {
-        setShowNotif(false);
         setShowProfile(false);
       }
     };
@@ -42,7 +36,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleEscapeKey);
     };
-  }, [showNotif, showProfile]);
+  }, [showProfile]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#E8C8CC] bg-[#FDF6F6] px-4 md:px-8">
@@ -80,42 +74,14 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
         </div>
       </div>
 
-      {/* Right: Notifications & Profile */}
+      {/* Right: Profile */}
       <div className="flex items-center gap-3 md:gap-5">
-        {/* Notifications Dropdown */}
-        <div ref={notifRef} className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setShowNotif((prev) => !prev);
-              setShowProfile(false);
-            }}
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2B8BE] bg-white text-[#9E4752] transition hover:bg-[#F8E8EA]"
-            aria-expanded={showNotif}
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
-
-          {showNotif && (
-            <div className="absolute right-0 z-50 mt-2 w-80 rounded-2xl border border-[#E8C8CC] bg-white p-4 shadow-xl">
-              <h3 className="border-b border-[#F2DCE0] pb-2 text-sm font-bold text-[#6E2D36]">
-                Notifications
-              </h3>
-              <p className="py-4 text-center text-xs text-[#8C6268]">
-                No new notifications
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* Profile Dropdown */}
         <div ref={profileRef} className="relative">
           <button
             type="button"
             onClick={() => {
               setShowProfile((prev) => !prev);
-              setShowNotif(false);
             }}
             className="flex items-center gap-2 rounded-xl border border-[#E2B8BE] bg-white px-3 py-1.5 text-sm font-semibold text-[#6E2D36] transition hover:bg-[#F8E8EA]"
             aria-expanded={showProfile}
