@@ -22,7 +22,7 @@ Infera AI is an organizational document management and AI question-answering pla
 | Project integration | Rohit | Earlier reported branch merges, integration and coordination | Verify current `main` branch and end-to-end flows |
 | Backend and database | Sakshi; Rohit supported database connectivity | Authentication APIs, SQL schemas, and PostgreSQL connection previously reported | Run current API and database tests |
 | Admin frontend | Jiya; Rohit supported UI coordination | React/Vite stack reported; later overall completion indicated but exact pages unconfirmed | List completed pages and check API integration |
-| Member frontend | Khushi | React/Vite setup and member login UI previously reported | Verify backend login integration and other member screens |
+| Member frontend | Vibha Arora | React/Vite setup and member login UI previously reported | Verify backend login integration and other member screens |
 | AI / RAG | Himanshu; Rohit contributed setup/implementation | RAG development/setup previously reported; overall project now near deployment | Demonstrate document-to-answer flow and citations |
 | Docker / environment | Rohit | Docker setup previously reported | Verify clean startup and deployment configuration |
 | Documentation | Sanjay | Competitor research and project documentation previously prepared; README/progress being updated | Review setup instructions against current source |
@@ -66,7 +66,7 @@ Previously documented React 18, Vite, Tailwind CSS, Lucide React, and Framer Mot
 
 **Current action:** Confirm completed admin pages, backend integration, responsive behavior, and admin-only access checks.
 
-### Khushi — Member frontend (`fe/member`)
+### Vibha Arora — Member frontend (`fe/member`)
 
 Previously documented React/Vite setup and an initial member login page with email/password fields, password visibility, remember-me UI, form feedback, and responsive styling.
 
