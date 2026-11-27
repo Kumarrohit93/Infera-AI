@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '../services/api';
 import {
