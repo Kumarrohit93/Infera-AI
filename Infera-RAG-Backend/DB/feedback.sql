@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS message_feedback (
     user_id UUID NOT NULL,
     helpful BOOLEAN NOT NULL,
     comment VARCHAR(1000),
+    admin_reply TEXT,
+    replied_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (message_id, user_id),
@@ -17,6 +19,10 @@ CREATE TABLE IF NOT EXISTS message_feedback (
         REFERENCES organization_members(organization_id, user_id)
         ON DELETE CASCADE
 );
+
+-- Add reply columns if upgrading from old schema (safe to run repeatedly)
+ALTER TABLE message_feedback ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+ALTER TABLE message_feedback ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_message_feedback_org_created
     ON message_feedback(organization_id, created_at DESC);

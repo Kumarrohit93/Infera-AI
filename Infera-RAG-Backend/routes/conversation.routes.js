@@ -5,7 +5,7 @@ const {
   listConversations,
   getConversationMessages,
   deleteConversation,
-} = require("../controllers/conversation.controller");
+} = require("../Controllers/conversation.controller");
 
 const router = express.Router();
 

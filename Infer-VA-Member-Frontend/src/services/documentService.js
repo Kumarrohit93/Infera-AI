@@ -238,4 +238,17 @@ export const documentService = {
     }
     return payload?.data ?? payload;
   },
+
+  // Returns the member's own past feedback submissions + any admin replies
+  async getMyFeedback() {
+    const res = await fetchWithSession(`${API_URL}/feedback/my`, {
+      headers: getAuthHeaders(),
+    });
+    handleUnauthorized(res);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(json?.error?.message || json?.message || "Failed to load your feedback.");
+    }
+    return Array.isArray(json?.data) ? json.data : [];
+  },
 };

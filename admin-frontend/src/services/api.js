@@ -465,4 +465,11 @@ export const feedbackApi = {
     return request('/feedback/admin/list', {}, RAG_API_BASE_URL);
   },
   getMonitoring: async () => request('/feedback/admin/monitoring', {}, RAG_API_BASE_URL),
+  replyToFeedback: async (feedbackId, replyText) => {
+    return request(
+      `/feedback/admin/reply/${encodeURIComponent(feedbackId)}`,
+      { method: 'POST', body: JSON.stringify({ reply: replyText }) },
+      RAG_API_BASE_URL
+    );
+  },
 };
