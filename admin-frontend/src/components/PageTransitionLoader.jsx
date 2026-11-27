@@ -7,10 +7,20 @@ const ANIMATION_DURATION = 3000;
 
 export default function PageTransitionLoader() {
   const { pathname } = useLocation();
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setVisible(true);
+    if (pathname === '/login') return;
+
+    if (sessionStorage.getItem('infera_show_login_loader') === 'true') {
+      sessionStorage.removeItem('infera_show_login_loader');
+      setVisible(true);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!visible) return;
+
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const timeout = window.setTimeout(
       () => setVisible(false),
@@ -18,7 +28,7 @@ export default function PageTransitionLoader() {
     );
 
     return () => window.clearTimeout(timeout);
-  }, [pathname]);
+  }, [visible]);
 
   if (!visible) return null;
 
