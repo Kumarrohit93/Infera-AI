@@ -1,0 +1,218 @@
+.infera-loader {
+  --loader-accent: #9e4752;
+  --loader-accent-light: #d7a781;
+  --loader-ink: #5e232b;
+  --loader-muted: #8c6268;
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--loader-ink);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.97) 0%, rgba(253, 246, 246, 0.92) 42%, rgba(248, 229, 232, 0.9) 100%);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  animation: infera-loader-lifetime 3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.infera-loader::before,
+.infera-loader::after {
+  position: absolute;
+  width: min(76vw, 680px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(158, 71, 82, 0.09);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.infera-loader::before {
+  animation: infera-loader-halo 5s ease-in-out infinite;
+}
+
+.infera-loader::after {
+  width: min(58vw, 500px);
+  border-color: rgba(158, 71, 82, 0.06);
+  animation: infera-loader-halo 5s ease-in-out -2.5s infinite reverse;
+}
+
+.infera-loader__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(90vw, 340px);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: infera-loader-arrive 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.infera-loader__emblem {
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 22px;
+  place-items: center;
+}
+
+.infera-loader__orbit {
+  position: absolute;
+  border: 1px solid rgba(158, 71, 82, 0.24);
+  border-radius: 50%;
+}
+
+.infera-loader__orbit--outer {
+  inset: 2px;
+  border-top-color: var(--loader-accent);
+  border-right-color: rgba(158, 71, 82, 0.08);
+  animation: infera-loader-orbit 5s linear infinite;
+}
+
+.infera-loader__orbit--inner {
+  inset: 13px;
+  border-style: dashed;
+  border-color: rgba(215, 167, 129, 0.72);
+  animation: infera-loader-orbit 12s linear infinite reverse;
+}
+
+.infera-loader__core {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  border: 1px solid rgba(158, 71, 82, 0.15);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #fff, #f8f4e7);
+  box-shadow: 0 9px 28px rgba(114, 47, 55, 0.16), inset 0 1px rgba(255, 255, 255, 0.8);
+  animation: infera-loader-core 2.2s ease-in-out infinite;
+}
+
+.infera-loader__core img {
+  display: block;
+  width: 43px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.infera-loader__particle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1px solid white;
+  border-radius: 50%;
+  background: var(--loader-accent-light);
+  box-shadow: 0 0 12px rgba(215, 167, 129, 0.72);
+}
+
+.infera-loader__particle--one {
+  top: 13px;
+  left: 25px;
+  animation: infera-loader-particle 2.4s ease-in-out infinite;
+}
+
+.infera-loader__particle--two {
+  right: 12px;
+  bottom: 36px;
+  width: 5px;
+  height: 5px;
+  animation: infera-loader-particle 2.4s ease-in-out -800ms infinite;
+}
+
+.infera-loader__particle--three {
+  bottom: 15px;
+  left: 39px;
+  width: 4px;
+  height: 4px;
+  animation: infera-loader-particle 2.4s ease-in-out -1600ms infinite;
+}
+
+.infera-loader__brand {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.055em;
+}
+
+.infera-loader__brand span {
+  color: var(--loader-accent);
+}
+
+.infera-loader__message {
+  margin: 7px 0 20px;
+  color: var(--loader-muted);
+  font-size: 13px;
+  letter-spacing: 0.015em;
+}
+
+.infera-loader__progress {
+  width: 164px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(158, 71, 82, 0.14);
+}
+
+.infera-loader__progress span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--loader-accent-light), var(--loader-accent));
+  box-shadow: 0 0 12px rgba(158, 71, 82, 0.4);
+  animation: infera-loader-progress 3s cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+
+.infera-loader__caption {
+  margin: 13px 0 0;
+  color: rgba(140, 98, 104, 0.86);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+}
+
+@keyframes infera-loader-lifetime {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes infera-loader-arrive {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes infera-loader-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes infera-loader-core {
+  0%, 100% { transform: scale(0.96); box-shadow: 0 7px 22px rgba(114, 47, 55, 0.12), inset 0 1px rgba(255, 255, 255, 0.8); }
+  50% { transform: scale(1.04); box-shadow: 0 10px 32px rgba(114, 47, 55, 0.22), inset 0 1px rgba(255, 255, 255, 0.9); }
+}
+
+@keyframes infera-loader-particle {
+  0%, 100% { opacity: 0.45; transform: scale(0.75); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+@keyframes infera-loader-halo {
+  0%, 100% { opacity: 0.35; transform: scale(0.97); }
+  50% { opacity: 0.75; transform: scale(1.03); }
+}
+
+@keyframes infera-loader-progress {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .infera-loader,
+  .infera-loader *,
+  .infera-loader::before,
+  .infera-loader::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

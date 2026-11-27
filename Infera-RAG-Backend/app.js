@@ -8,6 +8,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const pool = require("./Config/db");
 const { initDb } = require("./Config/initDb");
 const { waitForIngestionQueue, closeIngestionQueue } = require("./Services/ingestionQueue");
+const { startIngestionWorker, closeIngestionWorker } = require("./Services/ingestionWorker");
 const documentRoutes = require("./routes/document.routes");
 const folderRoutes = require("./routes/folder.routes");
 const ragRoutes = require("./routes/rag.routes");
@@ -105,6 +106,10 @@ app.use(errorHandler);
 async function startServer() {
     await initDb();
     if (shutdownRequested) return;
+    if (process.env.RUN_INGESTION_WORKER === "true") {
+        await startIngestionWorker();
+    }
+    if (shutdownRequested) return;
     await waitForIngestionQueue();
     if (shutdownRequested) return;
 
@@ -125,6 +130,7 @@ async function shutdown() {
                 server.close((error) => (error ? reject(error) : resolve()));
             });
         }
+        await closeIngestionWorker();
         await closeIngestionQueue();
         await pool.end();
     })();
@@ -134,18 +140,21 @@ async function shutdown() {
 
 startupPromise = startServer();
 startupPromise.catch(async (error) => {
-    console.error("[Startup] RAG backend initialization failed:", error.message);
+    console.error("[Startup] RAG backend initialization failed:");
+    console.error(error.stack || error);
+
     process.exitCode = 1;
+
     try {
         await shutdown();
     } catch (shutdownError) {
-        console.error("[Shutdown] RAG backend cleanup failed:", shutdownError.message);
+        console.error("[Shutdown] RAG backend cleanup failed:", shutdownError.stack || shutdownError);
     }
 });
 
 function handleShutdownSignal() {
     shutdown().catch((error) => {
-        console.error("[Shutdown] RAG backend cleanup failed:", error.message);
+        console.error("[Shutdown] RAG backend cleanup failed:", error.stack || error);
         process.exitCode = 1;
     });
 }

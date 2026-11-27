@@ -12,6 +12,7 @@ import FeedbackPage from './pages/FeedbackPage';
 import SettingsPage from './pages/SettingsPage';
 import ChatPage from './pages/ChatPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import PageTransitionLoader from './components/PageTransitionLoader';
 
 // TanStack Query Client Configuration
 const queryClient = new QueryClient({
@@ -82,6 +83,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        <PageTransitionLoader />
       </BrowserRouter>
     </QueryClientProvider>
   );

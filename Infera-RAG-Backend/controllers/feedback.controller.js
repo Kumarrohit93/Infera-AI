@@ -1,4 +1,5 @@
 const feedbackService = require("../Services/feedback.service");
+const analyticsService = require("../Services/analytics.service");
 const { z } = require("zod");
 const { parseOrThrow } = require("../utils/validate");
 
@@ -30,4 +31,9 @@ async function getMonitoring(req, res) {
   res.status(200).json({ success: true, data: monitoring });
 }
 
-module.exports = { saveFeedback, listFeedback, getMonitoring };
+async function getDashboardAnalytics(req, res) {
+  const analytics = await analyticsService.getDashboardAnalytics(req.user.organizationId);
+  res.status(200).json({ success: true, data: analytics });
+}
+
+module.exports = { saveFeedback, listFeedback, getMonitoring, getDashboardAnalytics };
