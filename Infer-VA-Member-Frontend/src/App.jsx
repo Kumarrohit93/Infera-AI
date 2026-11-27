@@ -4,6 +4,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import MemberDashboard from "./pages/MemberDashboard";
 import DocumentExplorer from "./pages/DocumentExplorer";
 import AIChat from "./pages/AIChat";
+import Feedback from "./pages/Feedback";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import AcceptInvitation from "./pages/AcceptInvitation";
@@ -22,13 +23,13 @@ export default function App() {
           <Route path="/dashboard" element={<MemberDashboard />} />
           <Route path="/documents" element={<DocumentExplorer />} />
           <Route path="/chat" element={<AIChat />} />
+          <Route path="/feedback" element={<Feedback />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
       <PageTransitionLoader />
     </>
   );
