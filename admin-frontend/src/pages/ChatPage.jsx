@@ -19,13 +19,14 @@ import MarkdownMessage from '../components/MarkdownMessage';
 
 export default function ChatPage() {
   const queryClient = useQueryClient();
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const [activeConvId, setActiveConvId] = useState(null);
   const [queryInput, setQueryInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [pendingMessages, setPendingMessages] = useState([]);
   const [activeCitation, setActiveCitation] = useState(null);
   const [convToDelete, setConvToDelete] = useState(null);
+  const [showMobileHistory, setShowMobileHistory] = useState(false);
 
   const {
     data: conversations = [],
@@ -66,8 +67,10 @@ export default function ChatPage() {
   }, [messagesError, messagesQueryError]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, isGenerating]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }, [messages.length, pendingMessages.length, isGenerating]);
 
   useEffect(() => {
     if (!activeCitation) return undefined;
@@ -161,23 +164,40 @@ export default function ChatPage() {
   return (
     <>
       <div className="h-[calc(100dvh-6.2rem)] sm:h-[calc(100vh-6.5rem)] flex flex-col lg:flex-row bg-white border border-[#E8DCD1] rounded-[16px] sm:rounded-[20px] shadow-sm overflow-hidden">
-        <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E8DCD1] bg-[#FAF7F2]/60 flex flex-col shrink-0">
+        <aside
+          className={`${
+            showMobileHistory ? 'flex' : 'hidden'
+          } lg:flex w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E8DCD1] bg-[#FAF7F2]/60 flex-col shrink-0 min-h-0 max-h-[48dvh] lg:max-h-none`}
+        >
           <div className="p-4 border-b border-[#E8DCD1]">
-            <button
-              type="button"
-              onClick={() => setActiveConvId(null)}
-              disabled={isGenerating}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Chat</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveConvId(null);
+                  setShowMobileHistory(false);
+                }}
+                disabled={isGenerating}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-[10px] bg-[#96613F] hover:bg-[#4A3023] text-white text-xs sm:text-sm font-semibold transition-all duration-150 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Chat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMobileHistory(false)}
+                aria-label="Close recent chats"
+                className="lg:hidden p-2.5 rounded-[10px] border border-[#E8DCD1] bg-white text-[#77716B] hover:text-[#25211E] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <p className="mt-3 text-[11px] leading-relaxed text-[#77716B]">
               Answers use documents your administrator account is permitted to access.
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-3 space-y-1.5 max-h-44 lg:max-h-none">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-sidebar-scroll p-3 space-y-1.5">
             <p className="px-2 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#77716B]">
               Recent Chats
             </p>
@@ -201,7 +221,10 @@ export default function ChatPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => setActiveConvId(conversation.id)}
+                    onClick={() => {
+                      setActiveConvId(conversation.id);
+                      setShowMobileHistory(false);
+                    }}
                     disabled={isGenerating}
                     className="flex items-start gap-2 min-w-0 flex-1 text-left cursor-pointer"
                   >
@@ -233,15 +256,30 @@ export default function ChatPage() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col min-w-0 bg-white">
-          <header className="px-4 sm:px-6 py-3.5 border-b border-[#E8DCD1] flex items-center justify-between gap-2">
-            <h2 className="text-sm sm:text-base font-bold text-[#25211E] truncate">
-              {conversations.find((conversation) => conversation.id === activeConvId)?.title || 'AI Assistant'}
-            </h2>
-            <span className="text-[11px] text-[#77716B] shrink-0">Role-based document access</span>
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-white">
+          <header className="px-4 sm:px-6 py-3.5 border-b border-[#E8DCD1] flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setShowMobileHistory((prev) => !prev)}
+                className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-[#FAF7F2] border border-[#E8DCD1] text-[11px] font-semibold text-[#4A3023] shrink-0 active:scale-95 transition-all cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-[#96613F]" />
+                <span>Chats</span>
+              </button>
+              <h2 className="text-sm sm:text-base font-bold text-[#25211E] truncate">
+                {conversations.find((conversation) => conversation.id === activeConvId)?.title || 'AI Assistant'}
+              </h2>
+            </div>
+            <span className="hidden xs:inline text-[11px] text-[#77716B] shrink-0">
+              Role-based document access
+            </span>
           </header>
 
-          <div className="flex-1 overflow-y-auto custom-sidebar-scroll p-4 sm:p-6 space-y-5 bg-[#FAF7F2]/30">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-sidebar-scroll p-4 sm:p-6 space-y-5 bg-[#FAF7F2]/30"
+          >
             {isLoadingMessages ? (
               <div className="h-full flex items-center justify-center text-xs text-[#77716B]">
                 Loading conversation...
@@ -337,10 +375,9 @@ export default function ChatPage() {
                 Searching your documents...
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-3 sm:p-4 border-t border-[#E8DCD1]">
+          <div className="p-3 sm:p-4 border-t border-[#E8DCD1] shrink-0">
             <form onSubmit={handleSend} className="flex items-center gap-2 max-w-4xl mx-auto">
               <input
                 type="text"

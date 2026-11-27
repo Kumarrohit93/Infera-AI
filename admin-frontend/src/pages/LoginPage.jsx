@@ -72,6 +72,7 @@ export default function LoginPage() {
 
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('isAdminAuth', 'true');
+      sessionStorage.setItem('infera_show_login_loader', 'true');
       toast.success('Admin login successful!');
       navigate('/dashboard');
     } catch {
