@@ -126,7 +126,7 @@ Earlier database tables included `organizations`, `users`, `organization_members
 | **Sakshi** | Backend, authentication APIs, and database schemas |
 | **Himanshu** | RAG development |
 | **Jiya** | Admin frontend |
-| **Khushi** | Member frontend |
+| **Vibha Arora** | Member frontend |
 | **Sanjay Bhakhar** | Documentation, competitor research, progress tracking, and QA preparation |
 
 ## Development workflow
