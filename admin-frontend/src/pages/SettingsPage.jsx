@@ -75,6 +75,7 @@ export default function SettingsPage() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('isAdminAuth');
     localStorage.removeItem('infera_admin_query_cache_v1');
+    localStorage.removeItem('infera_admin_settings_v1');
     queryClient.clear();
     toast.success('Logged out successfully.');
     navigate('/login', { replace: true });

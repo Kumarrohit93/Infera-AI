@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi, documentApi, folderApi, memberApi, feedbackApi } from '../services/api';
+import { useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -46,7 +47,7 @@ function getStoredAdminProfile() {
   } catch {
     // ignore storage errors
   }
-  return
+  return null;
 }
 
 // Framer motion variants
@@ -248,8 +249,7 @@ export default function DashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#25211E] tracking-tight">
-                Welcome back, {adminProfile?.name?.trim() || 'Jiya Sharma'}
-                Welcome back, {account?.user?.name || 'Admin'}
+                Welcome back, {adminProfile?.name?.trim() || account?.user?.name || 'Admin'}
               </h2>
               <p className="text-xs sm:text-sm text-[#77716B] leading-relaxed">
                 Documents, folders, and organization members from your connected backend services.
@@ -278,8 +278,8 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* 2. 3 StatCards with Interactive Lift & Golden-Brown Glow */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* 2. 4 StatCards with Interactive Lift & Golden-Brown Glow */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
           <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px]">
             <StatCard
               title="Total Documents"
@@ -300,7 +300,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/folders')}
             />
           </div>
-          <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px] sm:col-span-2 lg:col-span-1">
+          <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px]">
             <StatCard
               title="Total Members"
               value={members.length}
@@ -310,7 +310,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/members')}
             />
           </div>
-          <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px] sm:col-span-2 lg:col-span-1">
+          <div className="transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-8px_rgba(150,97,63,0.15)] rounded-[14px]">
             <StatCard
               title="Answers to Review"
               value={monitoring.unhelpfulAnswers ?? 0}
@@ -338,7 +338,6 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-
             </div>
 
             {/* Chart or Clean Empty State */}
