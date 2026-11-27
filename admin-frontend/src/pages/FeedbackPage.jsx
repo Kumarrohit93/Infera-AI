@@ -114,9 +114,6 @@ function ReplyModal({ feedback, onClose }) {
               <div>
                 <span className="text-[#77716B] font-semibold">Member:</span>
                 <span className="ml-1 font-bold text-[#25211E]">{feedback.user}</span>
-                {feedback.department && (
-                  <span className="ml-1 text-[#77716B]">· {feedback.department}</span>
-                )}
               </div>
               <div>
                 <span className="text-[#77716B] font-semibold">Their Question:</span>
@@ -476,10 +473,7 @@ export default function FeedbackPage() {
                 {filteredFeedbacks.map((item) => (
                   <tr key={item.id} className="hover:bg-[#FAF7F2]/60 transition-colors">
                     <td className="px-4 py-3 font-semibold text-xs text-[#25211E]">
-                      <div>{item.user}</div>
-                      {item.department && (
-                        <div className="text-[10px] text-[#77716B] font-normal">{item.department}</div>
-                      )}
+                      {item.user}
                     </td>
                     <td className="px-4 py-3 text-xs text-[#25211E] max-w-xs truncate">
                       "{item.question}"

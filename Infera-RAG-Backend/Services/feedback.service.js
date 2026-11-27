@@ -29,7 +29,6 @@ async function listOrganizationFeedback(organizationId) {
   const { rows } = await pool.query(
     `SELECT f.id,
             u.name AS "user",
-            u.department AS department,
             question.content AS question,
             answer.content AS "aiAnswer",
             CASE WHEN f.helpful THEN 'Helpful' ELSE 'Not Helpful' END AS rating,
@@ -53,7 +52,7 @@ async function listOrganizationFeedback(organizationId) {
          SELECT ms.document_name
            FROM message_sources ms
           WHERE ms.message_id = answer.id
-          ORDER BY ms.source_id LIMIT 1
+          ORDER BY ms.citation_number LIMIT 1
        ) source ON TRUE
       WHERE f.organization_id = $1
       ORDER BY f.created_at DESC`,
@@ -105,7 +104,7 @@ async function getMemberFeedback(organizationId, userId) {
          SELECT ms.document_name
            FROM message_sources ms
           WHERE ms.message_id = answer.id
-          ORDER BY ms.source_id LIMIT 1
+          ORDER BY ms.citation_number LIMIT 1
        ) source ON TRUE
       WHERE f.organization_id = $1 AND f.user_id = $2
       ORDER BY f.created_at DESC`,
